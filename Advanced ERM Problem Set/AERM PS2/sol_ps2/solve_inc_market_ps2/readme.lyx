@@ -1,0 +1,367 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+%format part and section names
+\usepackage{titlesec}
+
+%parts
+\titleclass{\part}{top} % make part like a chapter
+\titleformat{\part}{\filcenter\huge\bfseries} {\thepart.}{0em}{}
+
+%sections
+\titleclass{\section}{top} % make part like a chapter
+\titleformat{\section}{\filcenter\LARGE\bfseries} {}{0em}{}
+
+%roman numbering for the first pages
+\pagenumbering{roman}
+
+%dots in the table of contents
+\usepackage{tocloft}
+
+%number equations by section
+\usepackage{amsmath}
+\numberwithin{equation}{section}
+
+%2 in inch margin only first page
+\usepackage{afterpage}
+
+%references
+\usepackage[hidelinks]{hyperref}
+
+%appendices
+\usepackage{appendix}
+
+\renewcommand{\appendixtocname}{}
+\renewcommand{\appendixpagename}{}
+
+\makeatletter
+\let\oldappendix\appendices
+
+\renewcommand{\appendices}{%
+  \clearpage
+  \renewcommand{\thesection}{\Roman{section}}
+  % From now, everything goes to the app - file and not to the toc
+  \let\tf@toc\tf@app
+  \addtocontents{app}{\protect\setcounter{tocdepth}{3}}
+  \immediate\write\@auxout{%
+    \string\let\string\tf@toc\string\tf@app^^J
+  }
+  \oldappendix
+}%
+
+
+
+\newcommand{\listofappendices}{%
+  \begingroup
+  \renewcommand{\contentsname}{\appendixtocname}
+  \let\@oldstarttoc\@starttoc
+  \def\@starttoc##1{\@oldstarttoc{app}}
+  \tableofcontents% Reusing the code for \tableofcontents with different \contentsname and different file handle app
+  \endgroup
+}
+
+%\makeatother
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-ams-chap-bytype
+theorems-ams-extended-chap-bytype
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "ae" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family rmdefault
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement H
+\paperfontsize 12
+\spacing onehalf
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine biblatex
+\cite_engine_type authoryear
+\biblatex_bibstyle authoryear
+\biblatex_citestyle authoryear
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date true
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Section*
+Read me for Value Function Iteration
+\end_layout
+
+\begin_layout Standard
+What is a read-me-file? This file usually accompanies a folder full of code
+ and data.
+ And it explains what is what, and how to run the code.
+ If you want other people to be able to replicate your work, including your
+ future self, creating read-me files is highly recommended.
+ 
+\end_layout
+
+\begin_layout Standard
+Before you start, create a folder called ``figures'' so you can save the
+ figures without changing anything of the code.
+ If you don't do that you will get an error message because the program
+ tries to save your output in a folder that doesn't yet exist.
+ 
+\end_layout
+
+\begin_layout Standard
+These are the different programs that are best run using vs code.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+thickness "0.4pt"
+separation "3pt"
+shadowsize "4pt"
+framecolor "black"
+backgroundcolor "none"
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+file name
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+purpose
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+run_value_function_simple.jl
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+master file that runs all sub routines
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+def_params_baseline.jl
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sub routine that assigns parameter values
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sim_distn.jl
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sub routine that computes stationary distribution
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+solve_v.jl
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sub routine that performs value function iteration
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This is a lot to take in.
+ Which is why half the problem set is about running versions of this code
+ with different parameter values.
+ On my mac, the code runs for a little less than 20 minutes.
+ If you got an older machine, it might run a lot slower.
+ What takes time is finding the equilibrium interest rate using the bisection
+ method.
+\end_layout
+
+\begin_layout Standard
+Take note of two final remarks.
+ First, this code is not perfect.
+ It is not optimized for speed, nor for elegance.
+ I tried to write a simple straightforward version of the application.
+ The goal is to understand what is going on, and I left a lot of remarks
+ all over the code hoping that it might be helpful.
+ Once you understand how the algorithm works you can move on to more sophisticat
+ed methods in your own research.
+ If you do that, recall the endogenous grid method.
+ Matt Rognlie (Northwestern) and coauthors also provide a bunch of code,
+ which is much closer to the frontier than what I do here.
+ 
+\end_layout
+
+\begin_layout Standard
+Second, small errors are extremely costly and hard to find.
+ As you start working on this, take your time and try to be as careful as
+ possible.
+ 
+\end_layout
+
+\end_body
+\end_document
