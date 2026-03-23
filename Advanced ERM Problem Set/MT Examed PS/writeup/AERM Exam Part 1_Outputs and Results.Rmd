@@ -43,6 +43,14 @@ In the stationary distribution, the variance of $\Delta \log y$ equals $(1-\rho)
 
 However, $\rho = 0$ does not generate the most risk for households: with i.i.d. income, bad shocks are transitory and easily self-insured through savings, whereas high persistence (e.g. $\rho = 0.95$) means adverse shocks last many periods, making them far harder to smooth.
 
+## Q3: Simulation vs. Continuum
+
+```{r, echo=FALSE, fig.align='center', out.width='85%'}
+knitr::include_graphics("../results/fig_ex1_q3.pdf")
+```
+
+The simulated share of high-income types closely tracks the continuum prediction but does not match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
+
 
 
 
