@@ -34,3 +34,18 @@ knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Prob
 For all $\rho \in (0,1)$, the share of low-income households converges to 0.5, which is the unique stationary distribution of this symmetric Markov chain, but higher persistence slows the rate of convergence.
 
 The two edge cases behave differently: $\rho = 0$ causes full state-switching each period (so the share oscillates before settling), while $\rho = 1$ makes both states absorbing, so the initial distribution $P(y_L) = 0.2$ is permanent.
+
+## Q2: Volatility vs. Risk
+
+*Explanation*:
+
+In the stationary distribution, the variance of $\Delta \log y$ equals $(1-\rho) \cdot (\log 2)^2$, which is maximized at $\rho = 0$ where every household switches state each period. 
+
+However, $\rho = 0$ does not generate the most risk for households: with i.i.d. income, bad shocks are transitory and easily self-insured through savings, whereas high persistence (e.g. $\rho = 0.95$) means adverse shocks last many periods, making them far harder to smooth.
+
+
+
+
+
+
+
