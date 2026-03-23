@@ -71,3 +71,4 @@ hline!(plt, [0.5], color = :black, linestyle = :dash, label = "0.5", alpha = 0.5
 mkpath("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/")
 savefig(plt, "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/fig_ex1_q1.pdf")
 display(plt)
+
