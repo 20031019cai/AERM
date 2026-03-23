@@ -1,6 +1,8 @@
 ---
 title: "AERM Exam Outputs and Results"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: "2026-03-23"
 ---
 
@@ -8,22 +10,27 @@ date: "2026-03-23"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Part 1
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Use Julia code
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+# Exercise 1: Solve Standard Consumption-Saving Problem for Different Values of $\rho$
+
+## Q1: Stationary Income Distribution
+
+Income follows a two-state Markov chain with symmetric persistence $\rho_L = \rho_H = \rho$ and transition matrix:
+
+$$P = \begin{pmatrix} \rho & 1-\rho \\ 1-\rho & \rho \end{pmatrix}$$
+
+Starting from $P(y = y_L) = 0.2$, the figure below shows the share of low-income households over a 100-year horizon for each value of $\rho$.
+
+```{r, echo=FALSE, fig.align='center', out.width='85%'}
+knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/fig_ex1_q1.pdf")
 ```
 
-## Including Plots
+*Explanation*:
 
-You can also embed plots, for example:
+For all $\rho \in (0,1)$, the share of low-income households converges to 0.5, which is the unique stationary distribution of this symmetric Markov chain, but higher persistence slows the rate of convergence.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The two edge cases behave differently: $\rho = 0$ causes full state-switching each period (so the share oscillates before settling), while $\rho = 1$ makes both states absorbing, so the initial distribution $P(y_L) = 0.2$ is permanent.
