@@ -49,10 +49,20 @@ However, $\rho = 0$ does not generate the most risk for households: with i.i.d. 
 knitr::include_graphics("../results/fig_ex1_q3.pdf")
 ```
 
-The simulated share of high-income types closely tracks the continuum prediction but does not match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
+The simulated share of high-income types closely tracks the continuum prediction but does NOT match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
 
 
+## Q4: OLS vs. Fixed Effects
 
+Using the simulated panel data, I regress current income on lagged income via OLS and fixed effects (implemented by demeaning), using only linear algebra as instructed.
+
+| Model | $\hat{\beta}$ |
+|-------|--------------|
+| OLS   | 0.8983       |
+| FE    | 0.5690       |
+| True $\rho$ | 0.95  |
+
+OLS is closer to the true $\rho = 0.95$ because the data-generating process contains no individual fixed effects — all households face the same Markov chain — so OLS is consistent. The FE estimator suffers from Nickell bias: with only $T = 8$ periods, demeaning mechanically creates a negative correlation between the demeaned lagged variable and the demeaned error, biasing $\hat{\beta}_{FE}$ substantially downward. This bias is systematic and would shrink only as $T \to \infty$.
 
 
 
