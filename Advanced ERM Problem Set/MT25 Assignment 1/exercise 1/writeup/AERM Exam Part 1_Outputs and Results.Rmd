@@ -16,7 +16,7 @@ Use Julia code
 
 # Exercise 1: Solve Standard Consumption-Saving Problem for Different Values of $\rho$
 
-## Q1: Stationary Income Distribution
+## Question 1
 
 Income follows a two-state Markov chain with symmetric persistence $\rho_L = \rho_H = \rho$ and transition matrix:
 
@@ -25,7 +25,7 @@ $$P = \begin{pmatrix} \rho & 1-\rho \\ 1-\rho & \rho \end{pmatrix}$$
 Starting from $P(y = y_L) = 0.2$, the figure below shows the share of low-income households over a 100-year horizon for each value of $\rho$.
 
 ```{r, echo=FALSE, fig.align='center', out.width='85%'}
-knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/fig_ex1_q1.pdf")
+knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/fig_ex1_q1.pdf")
 ```
 
 *Explanation*:
@@ -34,23 +34,29 @@ For all $\rho \in (0,1)$, the share of low-income households converges to 0.5, w
 
 The two edge cases behave differently: $\rho = 0$ causes full state-switching each period (so the share oscillates before settling), while $\rho = 1$ makes both states absorbing, so the initial distribution $P(y_L) = 0.2$ is permanent.
 
-## Q2: Volatility vs. Risk
+## Question 2
 
-*Explanation*:
+| $\rho$ | Var($\Delta \log y$) |
+|--------|---------------------|
+| 0.00   | 0.48045             |
+| 0.05   | 0.45643             |
+| 0.20   | 0.38436             |
+| 0.50   | 0.24023             |
+| 0.70   | 0.14414             |
+| 0.95   | 0.02402             |
+| 1.00   | 0.00000             |
 
-In the stationary distribution, the variance of $\Delta \log y$ equals $(1-\rho) \cdot (\log 2)^2$, which is maximized at $\rho = 0$ where every household switches state each period.
+Labour income volatility, measured as $\text{Var}(\Delta \log y)$, is maximised at $\rho = 0$ since households switch between income states every period, making changes in income most frequent. However, $\rho = 0$ does not generate the most risk: when income alternates deterministically, households can anticipate future income and smooth consumption via bond savings, whereas for intermediate or high values of $\rho$, income shocks are harder to insure against because the current state provides less (or too much persistent) information about future income.
 
-However, $\rho = 0$ does not generate the most risk for households: with i.i.d. income, bad shocks are transitory and easily self-insured through savings, whereas high persistence (e.g. $\rho = 0.95$) means adverse shocks last many periods, making them far harder to smooth.
-
-## Q3: Simulation vs. Continuum
+## Question 3
 
 ```{r, echo=FALSE, fig.align='center', out.width='85%'}
-knitr::include_graphics("../results/fig_ex1_q3.pdf")
+knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/fig_ex1_q3.pdf")
 ```
 
 The simulated share of high-income types closely tracks the continuum prediction but does NOT match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
 
-## Q4: OLS vs. Fixed Effects
+## Question 4
 
 Using the simulated panel data, I regress current income on lagged income via OLS and fixed effects (implemented by demeaning), using only linear algebra as instructed.
 
