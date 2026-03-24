@@ -1,26 +1,29 @@
-# Exam MT 2025
+# Exam MT 2025 Assignment 1
+# Exercise 1 Part 1
 
-# Set-up
-# This is for saving figures to the results folder. 
-const RESULTS_DIR = "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results"
+# === Set-up ===
 
-# ============================================================
-# Part 1
+# This is for saving figures to the results folder
+const RESULTS_DIR = "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results"
 
-# ============================================================
-# Exercise 1: Solve Standard Consumption-Saving Problem for different values of ρ using Plots
+# Load packages
+using Pkg
+using Plots
+using Random
+using Statistics
+using LinearAlgebra
 
-# ============================================================
-# Q1: Stationary income distribution dynamics
-# ============================================================
 
-### Set-up ###
+# Question 1: Stationary income distribution dynamics
+
+# === Set-up ===
 # Income states
 yL = 1.0
 yH = 2.0
 
 # Values of persistence to consider
-ρ_vals = [0.0, 0.05, 0.2, 0.5, 0.7, 0.95, 1.0]
+
+    ρ_vals = [0.0, 0.05, 0.2, 0.5, 0.7, 0.95, 1.0]
 
 # Time horizon
 T = 100
@@ -50,9 +53,7 @@ function evolve_distribution(π0, P, T)
 end
 
 # Compute and plot
-using Pkg
 Pkg.add("Plots")
-using Plots
 plt = plot(
     xlabel = "Year",
     ylabel = "Share of low-income households",
@@ -72,8 +73,8 @@ end
 hline!(plt, [0.5], color = :black, linestyle = :dash, label = "0.5", alpha = 0.5)
 
 # Save figure
-mkpath("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/")
-savefig(plt, "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/fig_ex1_q1.pdf")
+mkpath("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/")
+savefig(plt, "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/fig_ex1_q1.pdf")
 display(plt)
 
 
@@ -81,10 +82,6 @@ display(plt)
 # ============================================================
 # Q3: Simulating income process for 1000 households
 # ============================================================
-
-using Random
-using Statistics
-
 Random.seed!(1776)
 rand_mat = rand(1000, 8)
 
@@ -130,8 +127,8 @@ plt3 = plot(1:T_sim, share_high_sim, label="Simulation (N=1000)", marker=:circle
 plot!(plt3, 1:T_sim, share_high_cont, label="Continuum", linestyle=:dash, linewidth=2)
 
 
-mkpath("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/")
-savefig(plt3, "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT Examed PS/results/fig_ex1_q3.pdf")
+mkpath("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/")
+savefig(plt3, "/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/fig_ex1_q3.pdf")
 display(plt3)
 
 
