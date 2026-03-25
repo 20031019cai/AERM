@@ -1,0 +1,424 @@
+---
+title: "Advanced Empirical Research Methods"
+subtitle: "MT25 Assignment 1 - Exercise 1"
+author: "Candidate Number: 1091806"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    toc_depth: 2
+    number_sections: false
+fontsize: 11pt
+geometry: margin=1in
+header-includes:
+  - \usepackage{float}
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{amsmath}
+  - \usepackage{newunicodechar}
+  - \newunicodechar{ρ}{$\rho$}
+  - \newunicodechar{π}{$\pi$}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part 1
+
+# Exercise 1:
+
+## Question 1
+
+Income follows a two-state Markov chain with symmetric persistence $\rho_L = \rho_H = \rho$ and transition matrix:
+
+$$P = \begin{pmatrix} \rho & 1-\rho \\ 1-\rho & \rho \end{pmatrix}$$
+
+Starting from $P(y = y_L) = 0.2$, the figure below shows the share of low-income households over a 100-year horizon for each value of $\rho$.
+
+```{r, echo=FALSE, fig.align='center', out.width='85%'}
+knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/fig_ex1_q1.pdf")
+```
+
+*Explanation*:
+
+For all $\rho \in (0,1)$, the share of low-income households converges to 0.5, which is the unique stationary distribution of this symmetric Markov chain, but higher persistence slows the rate of convergence.
+
+The two edge cases behave differently: $\rho = 0$ causes full state-switching each period (so the share oscillates before settling), while $\rho = 1$ makes both states absorbing, so the initial distribution $P(y_L) = 0.2$ is permanent.
+
+\newpage
+
+## Question 2
+
+| $\rho$ | Var($\Delta \log y$) |
+|--------|---------------------|
+| 0.00   | 0.48045             |
+| 0.05   | 0.45643             |
+| 0.20   | 0.38436             |
+| 0.50   | 0.24023             |
+| 0.70   | 0.14414             |
+| 0.95   | 0.02402             |
+| 1.00   | 0.00000             |
+
+Labour income volatility, measured as $\text{Var}(\Delta \log y)$, is maximised at $\rho = 0$ since households switch between income states every period, making changes in income most frequent. However, $\rho = 0$ does not generate the most risk: when income alternates deterministically, households can anticipate future income and smooth consumption via bond savings, whereas for intermediate or high values of $\rho$, income shocks are harder to insure against because the current state provides less (or too much persistent) information about future income.
+
+## Question 3
+
+```{r, echo=FALSE, fig.align='center', out.width='85%'}
+knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Problem Set/MT25 Assignment 1/exercise 1/results/fig_ex1_q3.pdf")
+```
+
+The simulated share of high-income types closely tracks the continuum prediction but does NOT match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
+
+## Question 4
+
+Using the simulated panel data from Q3, I regress current income on lagged income via pooled OLS and fixed effects (implemented via within-transformation demeaning), using only linear algebra as instructed.
+
+$$y_{i,t} = \alpha_{OLS} + \beta_{OLS} y_{i,t-1} + u_{i,t}$$
+
+$$\tilde{y}_{i,t} = \beta_{FE} \tilde{y}_{i,t-1} + \tilde{u}_{i,t}, \quad \tilde{x}_{i,t} = x_{i,t} - \bar{x}_i$$
+
+| Coefficient | Estimate | 
+|-------------|----------|
+| $\alpha_{OLS}$ | 0.1535 |
+| $\beta_{FE}$   | 0.5690 |
+
+The true population regression slope is $\beta = 2\rho - 1 = 0.9$, since $E[y_{t+1}|y_t]$ is linear in $y_t$ with slope $2\rho - 1$ when $y \in \{1,2\}$. OLS is close to this true value because the DGP contains no individual heterogeneity, so $E[y_{i,t-1} u_{i,t}] = 0$ and OLS is consistent. The FE estimator suffers from Nickell bias: demeaning over a short panel ($T=8$) induces a mechanical negative correlation between $\tilde{y}_{i,t-1}$ and $\tilde{u}_{i,t}$, biasing $\hat{\beta}_{FE}$ substantially downward. As the Monte Carlo simulations below confirm, this downward bias increases systematically with $\rho$.
+
+```{r, echo=FALSE, fig.align='center', out.width='40%'}
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_0.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_05.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_2.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_5.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_7.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_95.pdf")
+
+```
+
+\newpage
+
+
+# Appendix
+
+## Part 1 Exercise 1, Julia code
+
+```julia
+# Exam MT 2025 Assignment 1
+# Part 1 Exercise 1 
+
+# Load packages
+using Pkg
+using Plots
+using Random
+using Statistics
+using LinearAlgebra
+
+# ==============================================================================
+# Question 1
+# ==============================================================================
+
+# === Set-up ===
+# Income states
+
+    yL = 1.0
+    
+    yH = 2.0
+
+# Values of persistence to consider
+
+    ρ_vals = [0.0, 0.05, 0.2, 0.5, 0.7, 0.95, 1.0]
+
+# Time horizon
+    T = 100
+
+# Initial distribution: P(y = yL) = 0.2
+    π0 = [0.2, 0.8]  # [P(yL), P(yH)]using Pkg
+
+# Transition matrix for symmetric persistence ρ:
+#       yL      yH
+# yL [  ρ    1-ρ  ]
+# yH [ 1-ρ    ρ   ]
+    function transition_matrix(ρ)
+        return [ρ (1-ρ); (1-ρ) ρ]
+    end
+
+# Evolve distribution forward: π(t+1) = πt' * P
+# (row vector times transition matrix)
+    function evolve_distribution(π0, P, T)
+        shares_low = zeros(T + 1)
+        shares_low[1] = π0[1]
+        πt = copy(π0)
+        for t in 1:T
+            πt = πt' * P |> vec
+            shares_low[t + 1] = πt[1]
+        end
+        return shares_low
+    end
+
+# Compute and plot
+    Pkg.add("Plots")
+    plt = plot(
+        xlabel = "Year",
+        ylabel = "Share of low-income households",
+        title = "Evolution of low-income share by persistence ρ",
+        legend = :right,
+        size = (800, 500),
+        linewidth = 2
+    )
+
+    for ρ in ρ_vals
+        P = transition_matrix(ρ)
+        shares = evolve_distribution(π0, P, T)
+        plot!(plt, 0:T, shares, label = "ρ = $ρ")
+    end
+
+# Add reference line at 0.5
+
+    hline!(plt, [0.5], color = :black, linestyle = :dash, label = "0.5", alpha = 0.5)
+
+# ==============================================================================
+# Question 2
+# ==============================================================================
+
+# At the stationary distribution (50/50), Pr(switch) = 1-ρ for each type
+# Δlog(y) ∈ {0, log(2), -log(2)}
+
+    Δ = log(2)
+
+    println("ρ \t\t Var(Δlog y)")
+
+    println("—"^30)
+
+    for ρ in ρ_vals
+        # Stationary shares
+            p_L = (ρ == 1.0) ? 0.5 : 0.5  # symmetric chain
+
+            p_H = 1 - p_L
+        
+        # Joint probabilities of transitions
+
+            p_LL = p_L * ρ
+
+            p_LH = p_L * (1 - ρ)
+            
+            p_HL = p_H * (1 - ρ)
+            
+            p_HH = p_H * ρ
+            
+        # E[Δlog y] and E[(Δlog y)²]
+
+            mean_Δ = p_LH * Δ + p_HL * (-Δ)
+
+            mean_Δ_sq = p_LH * Δ^2 + p_HL * Δ^2
+            
+            var_Δ = mean_Δ_sq - mean_Δ^2
+
+        println("ρ = $ρ \t\t $(round(var_Δ, digits=5))")
+    end
+
+
+# ==============================================================================
+# Question 3
+# ==============================================================================
+
+# Set seed
+
+    Random.seed!(1776)
+
+# Generate random numbers for 1000 households and 8 years
+
+    rand_mat = rand(1000, 8)
+
+# Set parameters
+
+    N = 1000
+    T_sim = 8
+    ρ_sim = 0.95
+    
+
+# Transition matrix for ρ = 0.95
+
+    P_sim = transition_matrix(ρ_sim)
+
+# Allocate state matrix: 1 = low income, 2 = high income
+# Use column 1 of rand_mat to assign initial condition:
+# ~20% start in low state, ~80% start in high state
+    states = fill(2, N, T_sim)
+    
+    states[rand_mat[:, 1] .< 0.2, 1] .= 1
+
+# Simulate forward using columns 2:T_sim of rand_mat
+# For each household, compare rand draw to cumulative probability of staying in current state
+# If rand < P[s,1] → go to state 1 (low), otherwise → state 2 (high)
+
+    for t in 2:T_sim
+        for i in 1:N
+
+            # Get current state
+            s = states[i, t-1]
+
+            # Update state based on random draw and transition probabilities
+            states[i, t] = rand_mat[i, t] < P_sim[s, 1] ? 1 : 2
+        end
+    end
+
+# Compute share of high types in simulation at each period
+   
+    share_high_sim = vec(mean(states .== 2, dims=1))
+
+# Compute share of high types from the continuum (theoretical) exercise
+# Reuse the evolve_distribution function from Q1 with ρ = 0.95
+    
+    P95 = transition_matrix(0.95)
+    π_cont = [0.2, 0.8]  # initial distribution [P(low), P(high)]
+    shares_low_cont = evolve_distribution(π_cont, P95, T_sim - 1)
+    share_high_cont = 1.0 .- shares_low_cont  # convert to high-type share
+
+# Plot comparison
+
+    plt3 = plot(1:T_sim, share_high_sim,
+
+        marker=:circle, linewidth=2, label="1000 households",
+        xlabel="Year", ylabel="Share of high-income households",
+        title="Simulated vs. Continuum: Share of High Types (ρ=0.95)",
+        size=(800, 500))
+
+    plot!(plt3, 1:T_sim, share_high_cont,
+        marker=:circle, linestyle=:dash, linewidth=2, label="Continuum")
+        
+
+# ==============================================================================
+# Question 4
+# ==============================================================================
+
+# Convert states to income levels (1 = yL = 1, 2 = yH = 2)
+
+    Y_panel = float.(states)
+    Y_panel[states .== 1] .= yL
+    Y_panel[states .== 2] .= yH
+
+# Dependent variable y_{i,t} for t=2,...,8 and lag y_{i,t-1} for t=1,...,7
+    
+    Y_curr = Y_panel[:, 2:end]
+    Y_lag  = Y_panel[:, 1:end-1]
+
+# Stack into vectors
+
+    y_vec     = vec(Y_curr)
+    y_lag_vec = vec(Y_lag)
+
+# --- Model 1: Pooled OLS ---
+
+    X_ols = hcat(ones(length(y_lag_vec)), y_lag_vec)
+    β_ols = X_ols \ y_vec
+    
+    println("OLS:  α = $(round(β_ols[1], digits=4)),  β = $(round(β_ols[2], digits=4))")
+
+# --- Model 2: Fixed Effects (within transformation) ---
+
+    y_curr_mean = mean(Y_curr, dims=2)
+    y_lag_mean  = mean(Y_lag, dims=2)
+
+    Y_curr_dm = Y_curr .- y_curr_mean
+    Y_lag_dm  = Y_lag  .- y_lag_mean
+
+    y_dm     = vec(Y_curr_dm)
+    y_lag_dm = vec(Y_lag_dm)
+
+    β_fe = dot(y_lag_dm, y_dm) / dot(y_lag_dm, y_lag_dm)
+
+    println("FE:   β = $(round(β_fe, digits=4))")
+    println("True β = 2ρ - 1 = $(2*0.95 - 1)")
+
+# ===== Monte Carlo simulation: sampling distribution of β̂ across ρ values =====
+
+    function monte_carlo_beta(ρ; N=1000, T=8, reps=5000)
+
+        β_ols_vec = zeros(reps)
+        β_fe_vec  = zeros(reps)
+        
+        P_mc = transition_matrix(ρ)
+        
+        for r in 1:reps
+            # Draw random matrix
+            rm = rand(N, T)
+            
+            # Assign initial states using column 1
+            s = fill(2, N, T)
+            s[rm[:, 1] .< 0.2, 1] .= 1
+            
+            # Simulate forward
+            for t in 2:T
+                for i in 1:N
+                    s[i, t] = rm[i, t] < P_mc[s[i, t-1], 1] ? 1 : 2
+                end
+            end
+            
+            # Convert to income
+            y = float.(s)
+            y[s .== 1] .= yL
+            y[s .== 2] .= yH
+            
+            # Current and lag
+            Yc = y[:, 2:end]
+            Yl = y[:, 1:end-1]
+            
+            # OLS
+            yc_v = vec(Yc)
+            yl_v = vec(Yl)
+            X = hcat(ones(length(yl_v)), yl_v)
+            β_ols_vec[r] = (X \ yc_v)[2]
+            
+            # FE (demeaning)
+            Yc_dm = Yc .- mean(Yc, dims=2)
+            Yl_dm = Yl .- mean(Yl, dims=2)
+            yc_dm = vec(Yc_dm)
+            yl_dm = vec(Yl_dm)
+            denom = dot(yl_dm, yl_dm)
+            β_fe_vec[r] = denom ≈ 0.0 ? NaN : dot(yl_dm, yc_dm) / denom
+        end
+        
+        return β_ols_vec, β_fe_vec
+    end
+
+# ===== Plotting parameters =====
+
+# Run Monte Carlo for each ρ and plot histograms
+for ρ in ρ_vals
+    β_ols_mc, β_fe_mc = monte_carlo_beta(ρ)
+    β_fe_mc = β_fe_mc[isfinite.(β_fe_mc)]
+    β_true = 2ρ - 1
+
+    # Combine all finite estimates to set axis range
+    all_β = vcat(β_ols_mc, β_fe_mc)
+    bmin, bmax = extrema(all_β)
+    margin = max((bmax - bmin) * 0.1, 0.01)
+    xl = (bmin - margin, bmax + margin)
+    edges = range(xl[1], xl[2], length=60)
+
+    plt_mc = histogram(β_ols_mc, bins=edges, alpha=0.6, normalize=true, label="OLS",
+        xlabel="β̂", ylabel="Density",
+        title="Sampling distribution of β̂ (ρ = $ρ)",
+        size=(700, 450), xlims=xl)
+
+    if length(β_fe_mc) > 0
+        histogram!(plt_mc, β_fe_mc, bins=edges, alpha=0.6, normalize=true, label="FE")
+    end
+
+    vline!(plt_mc, [β_true], color=:red, linestyle=:dash, linewidth=2,
+        label="True β = $(round(β_true, digits=2))")
+
+    ρ_str = replace(string(ρ), "." => "_")
+    savefig(plt_mc, joinpath(RESULTS_DIR, "fig_ex1_q4_ρ_$(ρ_str).pdf"))
+    display(plt_mc)
+end
+```
+
+
+
+
+
+
+
+\newpage

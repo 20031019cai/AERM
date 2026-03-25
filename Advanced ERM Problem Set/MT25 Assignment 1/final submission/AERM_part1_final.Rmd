@@ -1,6 +1,6 @@
 ---
 title: "Advanced Empirical Research Methods"
-subtitle: "MT25 Assignment 1"
+subtitle: "MT25 Assignment 1 - Part 1"
 author: "Candidate Number: 1091806"
 date: "`r Sys.Date()`"
 output:
@@ -87,12 +87,12 @@ $$\tilde{y}_{i,t} = \beta_{FE} \tilde{y}_{i,t-1} + \tilde{u}_{i,t}, \quad \tilde
 The true population regression slope is $\beta = 2\rho - 1 = 0.9$, since $E[y_{t+1}|y_t]$ is linear in $y_t$ with slope $2\rho - 1$ when $y \in \{1,2\}$. OLS is close to this true value because the DGP contains no individual heterogeneity, so $E[y_{i,t-1} u_{i,t}] = 0$ and OLS is consistent. The FE estimator suffers from Nickell bias: demeaning over a short panel ($T=8$) induces a mechanical negative correlation between $\tilde{y}_{i,t-1}$ and $\tilde{u}_{i,t}$, biasing $\hat{\beta}_{FE}$ substantially downward. As the Monte Carlo simulations below confirm, this downward bias increases systematically with $\rho$.
 
 ```{r, echo=FALSE, fig.align='center', out.width='40%'}
-knitr::include_graphics("../results/fig_ex1_q4_rho_0_0.pdf")
-knitr::include_graphics("../results/fig_ex1_q4_rho_0_05.pdf")
-knitr::include_graphics("../results/fig_ex1_q4_rho_0_2.pdf")
-knitr::include_graphics("../results/fig_ex1_q4_rho_0_5.pdf")
-knitr::include_graphics("../results/fig_ex1_q4_rho_0_7.pdf")
-knitr::include_graphics("../results/fig_ex1_q4_rho_0_95.pdf")
+knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_0.pdf")
+knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_05.pdf")
+knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_2.pdf")
+knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_5.pdf")
+knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_7.pdf")
+knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_95.pdf")
 
 ```
 
