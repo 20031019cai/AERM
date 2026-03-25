@@ -69,18 +69,30 @@ knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Prob
 
 The simulated share of high-income types closely tracks the continuum prediction but does NOT match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
 
-## Question 4
+## Q4: OLS vs. Fixed Effects
 
-Using the simulated panel data, I regress current income on lagged income via OLS and fixed effects (implemented by demeaning), using only linear algebra as instructed.
+Using the simulated panel data from Q3, I regress current income on lagged income via pooled OLS and fixed effects (implemented via within-transformation demeaning), using only linear algebra as instructed.
 
-| Model       | $\hat{\beta}$ |
-|-------------|---------------|
-| OLS         | 0.8983        |
-| FE          | 0.5690        |
-| True $\rho$ | 0.95          |
+$$y_{i,t} = \alpha_{OLS} + \beta_{OLS} y_{i,t-1} + u_{i,t}$$
 
-OLS is closer to the true $\rho = 0.95$ because the data-generating process contains no individual fixed effects — all households face the same Markov chain — so OLS is consistent. The FE estimator suffers from Nickell bias: with only $T = 8$ periods, demeaning mechanically creates a negative correlation between the demeaned lagged variable and the demeaned error, biasing $\hat{\beta}_{FE}$ substantially downward. This bias is systematic and would shrink only as $T \to \infty$.
+$$\tilde{y}_{i,t} = \beta_{FE} \tilde{y}_{i,t-1} + \tilde{u}_{i,t}, \quad \tilde{x}_{i,t} = x_{i,t} - \bar{x}_i$$
 
+| Coefficient | Estimate | 
+|-------------|----------|
+| $\alpha_{OLS}$ | 0.1535 |
+| $\beta_{FE}$   | 0.5690 |
+
+The true population regression slope is $\beta = 2\rho - 1 = 0.9$, since $E[y_{t+1}|y_t]$ is linear in $y_t$ with slope $2\rho - 1$ when $y \in \{1,2\}$. OLS is close to this true value because the DGP contains no individual heterogeneity, so $E[y_{i,t-1} u_{i,t}] = 0$ and OLS is consistent. The FE estimator suffers from Nickell bias: demeaning over a short panel ($T=8$) induces a mechanical negative correlation between $\tilde{y}_{i,t-1}$ and $\tilde{u}_{i,t}$, biasing $\hat{\beta}_{FE}$ substantially downward. As the Monte Carlo simulations below confirm, this downward bias increases systematically with $\rho$.
+
+```{r, echo=FALSE, fig.align='center', out.width='40%'}
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_0.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_05.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_2.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_5.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_7.pdf")
+knitr::include_graphics("../results/fig_ex1_q4_rho_0_95.pdf")
+
+```
 
 \newpage
 
