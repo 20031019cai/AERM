@@ -2,7 +2,8 @@
 
 # ex2_vfi.jl — Solve household Bellman via VFI
 
-function solve_household(p::ModelParams, ρ::Float64)
+function solve_household(p, ρ::Float64)
+    
     # Unpack
     nb = p.nb
     b_grid = collect(LinRange(p.b_min, p.b_max, nb))

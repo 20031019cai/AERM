@@ -1,7 +1,7 @@
 # Part 1, Exercise 2: Kolmogorov-Forward Equation
 # kfe.jl — Compute stationary distribution over (b, y) states
 
-function stationary_dist(sol, ρ::Float64, p::ModelParams)
+function stationary_dist(sol, ρ::Float64, p)
     nb = sol.nb
     ny = sol.ny
     n_states = nb * ny
