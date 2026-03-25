@@ -1,9 +1,21 @@
 ---
-title: "AERM Exam Outputs and Results"
+title: "Advanced Empirical Research Methods"
+subtitle: "MT Examined Problem Set - Part 2"
+author: "Candidate Number: XXXXXXX"
+date: "`r Sys.Date()`"
 output:
-  pdf_document: default
-  html_document: default
-date: "2026-03-23"
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: false
+fontsize: 11pt
+geometry: margin=1in
+header-includes:
+  - \usepackage{float}
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{amsmath}
+  - \usepackage{setspace}
 ---
 
 ```{r setup, include=FALSE}
