@@ -98,11 +98,11 @@ knitr::include_graphics("../results/fig_ex1_q4_rho_0_95.pdf")
 
 # Appendix
 
-## Julia code
+## Julia code, Part 1 Exercise 1
 
 ```julia
 # Exam MT 2025 Assignment 1
-# Exercise 1 Part 1
+# Part 1 Exercise 1 
 
 # Load packages
 using Pkg
