@@ -69,7 +69,7 @@ knitr::include_graphics("/Users/caisuyan/Documents/GitHub/AERM/Advanced ERM Prob
 
 The simulated share of high-income types closely tracks the continuum prediction but does NOT match it exactly, because a finite sample of 1000 households is subject to sampling variation whereas the continuum result holds by the law of large numbers over a unit mass of agents.
 
-## Q4: OLS vs. Fixed Effects
+## Question 4
 
 Using the simulated panel data from Q3, I regress current income on lagged income via pooled OLS and fixed effects (implemented via within-transformation demeaning), using only linear algebra as instructed.
 
