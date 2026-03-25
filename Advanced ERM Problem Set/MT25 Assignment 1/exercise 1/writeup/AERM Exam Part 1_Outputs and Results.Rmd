@@ -1,7 +1,7 @@
 ---
 title: "Advanced Empirical Research Methods"
 subtitle: "MT25 Assignment 1"
-author: "Candidate Number: XXXXXXX"
+author: "Candidate Number: 1091806"
 date: "`r Sys.Date()`"
 output:
   pdf_document:
