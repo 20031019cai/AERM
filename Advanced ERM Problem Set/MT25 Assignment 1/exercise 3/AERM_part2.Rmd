@@ -454,6 +454,65 @@ This is possible because the HM2015 inequalities are **necessary but not suffici
 
 In other words, small violations are "absorbed" within the width of the bounds.
 
+\newpage
+
+# Question 7 
+
+Recall from MW2017 Equation (5), the testable implications of $LI + LM$ are, for any $y \in \mathcal{Y}$
+
+$$\theta(y, 1) \equiv E[p_1 D(1-Z) - p_0 DZ \mid Y = y] \leq 0$$
+$$\theta(y, 0) \equiv E[p_0 (1-D)Z - p_1 (1-D)(1-Z) \mid Y = y] \leq 0$$
+
+where $p_k = \Pr(Z = k)$.
+
+These are **conditional** moment inequalities, they must hold at every value of $Y$. For each observation $i$, we compute:
+
+$$L_i^1 = p_1 D_i(1 - Z_i) - p_0 D_i Z_i$$
+$$L_i^0 = p_0 (1 - D_i)Z_i - p_1 (1 - D_i)(1 - Z_i)$$
+
+Then $\theta(y, 1) = E[L^1 \mid Y = y]$ and $\theta(y, 0) = E[L^0 \mid Y = y]$. Since $Y$ is continuous, for a given scalar $y$ we evaluate the conditional expectation at observations where $Y = y$:
+
+```{r}
+get_theta_MW <- function(data, y) {
+  
+  p1 <- mean(data$Z)
+  p0 <- 1 - p1
+  n  <- nrow(data)
+  
+  # Bandwidth (Silverman rule of thumb)
+    
+    h <- 1.06 * sd(data$Y) * n^(-1/5)
+  
+  # Kernel weights and variables
+  
+    u <- (data$Y - y) / h
+  
+    K <- ifelse(abs(u) <= 1, 0.75 * (1 - u^2), 0)
+  
+  # Construct G_1 and G_0
+  
+    G1 <- p1 * data$D * (1 - data$Z) - p0 * data$D * data$Z
+  
+    G0 <- p0 * (1 - data$D) * data$Z - p1 * (1 - data$D) * (1 - data$Z)
+  
+  # Local linear regression: regress G on (Y - y), weighted by K
+  
+    Y_c <- data$Y - y
+  
+    thetay0 <- coef(lm(G0 ~ Y_c, weights = K))[1]
+  
+    thetay1 <- coef(lm(G1 ~ Y_c, weights = K))[1]
+  
+  c(thetay1 = thetay1, thetay0 = thetay0)
+}
+```
+
+
+Since $Y$ is continuous, each observed $Y_i$ is essentially unique, so evaluating at a single $y$ returns the value of $L^0_i$ and $L^1_i$ for that observation.
+
+# Question 8
+
+
 
 
 
