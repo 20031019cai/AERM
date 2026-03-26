@@ -1,5 +1,5 @@
 ---
-title: "AERM_part2"
+title: "Advanced Empirical Research Methods)"
 subtitle: MT25 Assignment 1 - Part 2
 author: "Candidate Number: 1091806"
 date: "2026-03-25"
@@ -150,6 +150,44 @@ $$ E[U∣D=1] > E[U∣D=0]$$
 
 So, **D is endogenous**. OLS of Y on D would be biased upward due to positive selection.
 
+## 2b) 
+
+The individual treatment effect is $Y_1 - Y_0$. From the outcome equation, potential outcomes are:
+
+$$Y_1 = 1 + \beta Z + U, \quad Y_0 = 0 + \beta Z + U$$
+
+So for every individual:
+
+$$Y_1 - Y_0 = 1$$
+
+The treatment effect is **constant and equal to 1**, it does not vary across individuals. There is no distribution to speak of; it is degenerate at 1. Consequently:
+
+$$\text{LATE} = \text{ATE} = \text{ATT} = 1$$
+
+
+## 2c)
+
+$\beta$ controls the **direct effect** of the instrument $Z$ on the outcome $Y$. 
+
+When $\beta \neq 0$, $Z$ enters the outcome equation directly:
+
+$$Y = D + \beta Z + U$$
+
+This means $Z$ affects $Y$ through a channel other than $D$, which **violates the exclusion restriction**, a key assumption of the LATE model. 
+
+When $\beta = 0$, the instrument only affects $Y$ through its effect on $D$, and the exclusion restriction holds.
+
+## 2d)
+
+$\alpha$ controls the **strength of the first stage**, ie. how much the instrument $Z$ shifts the probability of receiving treatment. 
+
+In the selection equation:
+
+$$D = \mathbf{1}\{\alpha Z + \epsilon > 0\}$$
+
+If $\alpha = 0$, the instrument has no effect on $D$ and there are **no compliers**, so IV estimation breaks down.
+
+A larger $\alpha$ means that $Z = 1$ pushes more individuals over the zero threshold, **increasing the share of compliers** (those whose treatment status changes with $Z$). 
 
 
 
