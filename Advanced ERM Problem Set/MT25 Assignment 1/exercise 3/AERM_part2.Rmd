@@ -515,10 +515,11 @@ get_theta_MW <- function(data, y) {
 
 Since $Y$ is continuous, each observed $Y_i$ is essentially unique, so evaluating at a single $y$ returns the value of $L^0_i$ and $L^1_i$ for that observation.
 
+\newpage
 # Question 8
 
 
-## Plotting MW2017 inequalities for $\alpha = 0.6$, $\beta = 1$
+**8.1: Plotting MW2017 inequalities for $\alpha = 0.6$, $\beta = 1$**.
 
 Generate data and evaluate $\theta(y, 0)$ and $\theta(y, 1)$ across a grid of $y$ values:
 
@@ -559,4 +560,51 @@ legend("bottomleft",
        col = c("blue", "darkgreen"), lwd = 2)
 ```
 
+With $\beta = 1$, we expect at least one of the functions to cross above zero at some values of $y$, indicating a violation detected by MW2017.
+
+**8.2: Can MW2017 detect a violation that HM2015 cannot?**
+
+From **Question 6**, we found that for small $\beta$ (e.g. around 0.1--0.65), HM2015 fails to detect the violation. We now check whether MW2017 can detect it at those values:
+
+```{r, results='hide'}
+# Use a beta value where HM2015 did not detect a violation
+  
+  set.seed(123)
+  
+  df_small <- simulate_data(n = 100000, alpha = 0.6, beta = 0.5)
+
+# HM2015 check
+
+  theta_hm <- get_theta_HM(df_small)
+
+  cat("HM2015 max(theta):", round(max(theta_hm), 4), 
+    "- Detected:", max(theta_hm) > 0, "\n")
+
+# MW2017 check across y grid
+  
+  y_grid2 <- seq(quantile(df_small$Y, 0.05), quantile(df_small$Y, 0.95), length.out = 100)
+  
+  mw_check <- sapply(y_grid2, function(y) max(get_theta_MW(df_small, y)))
+  
+  cat("MW2017 max(theta):", round(max(mw_check), 4), 
+    "- Detected:", max(mw_check) > 0, "\n")
+```
+
+| Test | max($\theta$) | Detected |
+| --- | --- | --- |
+| HM2015 | `r round(max(theta_hm), 4)` | `r max(theta_hm) > 0` |
+| MW2017 | `r round(max(mw_check, na.rm = TRUE), 4)` | `r max(mw_check, na.rm = TRUE) > 0` |
+
+With $\beta = 0.5$, HM2015 **fails** to detect the violation while MW2017 successfully detects it. This is because MW2017's conditional inequalities examine the distribution at every value of $Y$, so localised violations are picked up. HM2015 works with unconditional means, which can average out such violations.
+
+**8.3: Can HM2015 detect violations that MW2017 cannot?**
+
+No. MW2017's testable implications are **sharp** (Theorem 1 in MW2017): they capture all observable violations of LI + LM. Any violation detected by HM2015 necessarily implies a violation of the MW2017 inequalities, so MW2017 would detect it too. The converse is not true, as demonstrated above.
+
+
+# Question 9
+
+```{r}
+
+```
 
