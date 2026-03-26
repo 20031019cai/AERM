@@ -131,9 +131,24 @@ Test with beta = 0, exclusion restriction holds:
   kable(results, digits = 4, caption = "IV estimates for different parameter values")
 ```
 
+\newpage
+# Question 2
 
+## 2a)
 
+Treatment is assigned by:
 
+$$D = \mathbf{1}\{\alpha Z + \epsilon > 0\}$$
+So, conditional on Z, individuals with larger $ϵ$ are more likely to be treated.
+
+Since: 
+
+$$Corr(U,ϵ) = 0.5 > 0$$
+Those who select into treatment also tend to have higher values on the outcome error $U$. This means: 
+
+$$ E[U∣D=1] > E[U∣D=0]$$ 
+
+So, **D is endogenous**. OLS of Y on D would be biased upward due to positive selection.
 
 
 
