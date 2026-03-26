@@ -203,6 +203,39 @@ The LATE model requires four assumptions. We check each in turn:
 
 In summary, assumptions 1--3 always hold (for $\alpha > 0$). The exclusion restriction holds only when $\beta = 0$.
 
+\newpage
+
+# Question 3
+
+The key difference between HM2015 and MW2017 lies in the **exclusion restriction**. 
+
+HM2015 requires only **mean exclusion** (their Assumption 2, page 400):
+
+$$E(Y^{d,1} \mid T = t, Z = 1) = E(Y^{d,0} \mid T = t, Z = 0] = E(Y^d \mid T = t) $$
+
+This says the instrument does not affect the *mean* potential outcome within any subpopulation. 
+
+MW2017 requires **full independence** (their Assumption 1, "LATE Independence - LI", page 306):
+
+$$Z \perp (Y_1, Y_0, D_0, D_1)$$
+
+This is strictly stronger: it implies the instrument does not affect the *entire distribution* of potential outcomes, not just the mean. Both papers share the remaining assumptions (unconfounded types and monotonicity).
+
+Because MW2017 imposes the stronger assumption, its testable implications are **sharp**, they capture all observable violations of LI + LM. HM2015's inequalities are necessary but not sufficient conditions for instrument validity, so some violations may go undetected. 
+
+On the other hand, HM2015's weaker requirement means its test remains valid in settings where only mean independence is credible.
+
+Both tests are relevant because in just-identified IV models (one instrument for one endogenous variable), traditional overidentification tests like the Sargan test are unavailable. 
+
+
+
+
+
+
+
+
+
+
 
 
 
