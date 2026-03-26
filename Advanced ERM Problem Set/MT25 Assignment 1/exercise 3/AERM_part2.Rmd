@@ -387,6 +387,76 @@ The Wald estimand is close to 1 with negligible bias, confirming it correctly id
 | 0 | `r round(wald_beta0, 4)` | `r round(wald_beta0 - 1, 4)` |
 
 
+\newpage
+
+# Question 6
+
+The exclusion restriction is violated for any $\beta \neq 0$. However, the HM2015 inequalities are only *necessary* conditions for instrument validity — they may fail to detect small violations. We now search for a value of $\beta$ where all four $\theta_j \leq 0$ despite $\beta \neq 0$.
+
+We loop over a grid of $\beta$ values from 0.05 to 1. For each value, we simulate 100,000 observations, compute the HM2015 inequalities, and record whether any violation is detected:
+
+```{r}
+
+# Set seed
+
+    set.seed(123)
+
+# Define a grid of beta values to test
+  
+    beta_vals <- seq(0.05, 1, by = 0.05)
+
+# Prepare a data frame to store results
+
+    results <- data.frame(beta = beta_vals, 
+                          max_theta = NA, 
+                          wald = NA,
+                          violation_detected = NA)
+                          
+
+# Loop over each beta value
+    for (i in seq_along(beta_vals)) {
+     
+      # Simulate data with exclusion restriction violated (beta != 0)
+      
+          df <- simulate_data(n = 100000, alpha = 0.6, beta = beta_vals[i])
+      
+      # Compute HM2015 inequalities
+      
+          theta <- get_theta_HM(df)
+      
+      # Record the largest theta (if > 0, violation is detected)
+      
+          results$max_theta[i] <- round(max(theta), 4)
+      
+          results$violation_detected[i] <- max(theta) > 0
+      
+      # Record the Wald estimand (should be biased away from 1)
+     
+           results$wald[i] <- round(iv_estimate(df), 4)
+    }
+```
+
+Display the results:
+
+```{r}
+kable(results,
+      col.names = c("$\\beta$", "max($\\theta_j$)", "Wald Estimand","Violation Detected"),
+      caption = "HM2015 detection across values of $\\beta$",
+      booktabs = TRUE,
+      row.names = FALSE,
+      escape = FALSE,
+      format = "latex"
+) %>% kable_styling(latex_options = "hold_position")
+```
+For small values of $\beta$ (e.g. around 0.1--0.2), the exclusion restriction is violated ($\beta \neq 0$) and the Wald estimand is biased away from 1, yet all four $\theta_j \leq 0$, no violation is detected by the HM2015 test.
+
+This is possible because the HM2015 inequalities are **necessary but not sufficient** conditions for instrument validity. The test works by checking whether the point-identified mean potential outcome of the always takers (or never takers) falls outside bounded intervals in the mixed population. These bounds have positive width, which is driven by the share of compliers. When the direct effect of $Z$ on $Y$ is small, the point-identified mean can still land within the bounds despite the exclusion restriction being violated. 
+
+In other words, small violations are "absorbed" within the width of the bounds.
+
+
+
+
 
 
 
