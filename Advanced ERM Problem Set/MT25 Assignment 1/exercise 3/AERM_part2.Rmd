@@ -22,6 +22,7 @@ library(mvtnorm)  # Question 1
 library(knitr)    # Question 1, 5
 library(modelsummary) # Question 5
 library(kableExtra) # Question 5
+library(ggplot2) # Question 8
 ```
 
 \newpage
@@ -489,19 +490,23 @@ get_theta_MW <- function(data, y) {
   
     K <- ifelse(abs(u) <= 1, 0.75 * (1 - u^2), 0)
   
+  # Return NA if too few observations nearby
+  
+    if (sum(K > 0) < 5) return(c(thetay1 = NA, thetay0 = NA))
+    
   # Construct G_1 and G_0
   
     G1 <- p1 * data$D * (1 - data$Z) - p0 * data$D * data$Z
   
     G0 <- p0 * (1 - data$D) * data$Z - p1 * (1 - data$D) * (1 - data$Z)
   
-  # Local linear regression: regress G on (Y - y), weighted by K
+  # Nadaraya-Watson kernel estimator of conditional expectation
   
-    Y_c <- data$Y - y
+    idx <- K > 0
   
-    thetay0 <- coef(lm(G0 ~ Y_c, weights = K))[1]
+    thetay1 <- weighted.mean(G1[idx], K[idx])
   
-    thetay1 <- coef(lm(G1 ~ Y_c, weights = K))[1]
+    thetay0 <- weighted.mean(G0[idx], K[idx])
   
   c(thetay1 = thetay1, thetay0 = thetay0)
 }
@@ -513,10 +518,45 @@ Since $Y$ is continuous, each observed $Y_i$ is essentially unique, so evaluatin
 # Question 8
 
 
+## Plotting MW2017 inequalities for $\alpha = 0.6$, $\beta = 1$
 
+Generate data and evaluate $\theta(y, 0)$ and $\theta(y, 1)$ across a grid of $y$ values:
 
+```{r}
+set.seed(123)
+df_q8 <- simulate_data(n = 100000, alpha = 0.6, beta = 1)
 
+# Evaluate theta at a grid of y values (use quantiles to avoid boundary issues)
 
+  y_grid <- seq(quantile(df_q8$Y, 0.05), quantile(df_q8$Y, 0.95), length.out = 100)
 
+# Compute thetas, and story in vectors
+  
+  thetay0_vec <- numeric(length(y_grid))
+
+  thetay1_vec <- numeric(length(y_grid))
+
+  for (i in seq_along(y_grid)) {
+    th <- get_theta_MW(df_q8, y_grid[i])
+    thetay1_vec[i] <- th["thetay1"]
+    thetay0_vec[i] <- th["thetay0"]
+  }
+  
+```
+
+Plot $\theta(y, 1)$ and $\theta(y, 0)$ against $y$. Under the null, both should be $\leq 0$ everywhere:
+
+```{r}
+# Combined plot
+plot(y_grid, thetay1_vec, type = "l", col = "blue", lwd = 2,
+     xlab = "Y", ylab = expression(theta),
+     main = "MW2017 Inequalities (alpha = 0.6, beta = 1)",
+     ylim = range(c(thetay0_vec, thetay1_vec), na.rm = TRUE))
+lines(y_grid, thetay0_vec, col = "darkgreen", lwd = 2)
+abline(h = 0, lty = 2, col = "red")
+legend("bottomleft", 
+       legend = c(expression(theta(y,1)), expression(theta(y,0))),
+       col = c("blue", "darkgreen"), lwd = 2)
+```
 
 
