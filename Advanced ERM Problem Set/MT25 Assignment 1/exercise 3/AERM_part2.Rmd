@@ -19,7 +19,9 @@ header-includes:
 # load libraries
 
 library(mvtnorm)  # Question 1
-library(knitr)    # Question 1
+library(knitr)    # Question 1, 5
+library(modelsummary) # Question 5
+library(kableExtra) # Question 5
 ```
 
 \newpage
@@ -227,12 +229,162 @@ On the other hand, HM2015's weaker requirement means its test remains valid in s
 
 Both tests are relevant because in just-identified IV models (one instrument for one endogenous variable), traditional overidentification tests like the Sargan test are unavailable. 
 
+\newpage
+# Question 4
+
+Recall from HM2015 Equation (7), the four testable inequality moment constraints:
+
+$$\theta_1 = E[Y \mid D=1, Z=1, Y \leq y_q] - E[Y \mid D=1, Z=0]$$
+$$\theta_2 = E[Y \mid D=1, Z=0] - E[Y \mid D=1, Z=1, Y \geq y_{1-q}]$$
+$$\theta_3 = E[Y \mid D=0, Z=0, Y \leq y_r] - E[Y \mid D=0, Z=1]$$
+$$\theta_4 = E[Y \mid D=0, Z=1] - E[Y \mid D=0, Z=0, Y \geq y_{1-r}]$$
+
+where:
+
+$$q = \frac{P(D=1 \mid Z=0)}{P(D=1 \mid Z=1)}$$
+
+is the share of always takers among the treated when $Z=1$, and:
+
+$$r = \frac{P(D=0 \mid Z=1)}{P(D=0 \mid Z=0)}$$
+
+is the share of never takers among the untreated when $Z=0$.
+
+Under IV validity, all four $\theta_j \leq 0$.
 
 
+```{r}
+get_theta_HM <- function(df) {
+  
+  # Subgroups
+  
+    Y_D1Z1 <- df$Y[df$D == 1 & df$Z == 1]
+    
+    Y_D1Z0 <- df$Y[df$D == 1 & df$Z == 0]
+    
+    Y_D0Z0 <- df$Y[df$D == 0 & df$Z == 0]
+    
+    Y_D0Z1 <- df$Y[df$D == 0 & df$Z == 1]
+  
+  # Proportions q and r
+    
+    q <- mean(df$D[df$Z == 0]) / mean(df$D[df$Z == 1])
+    
+    r <- mean(1 - df$D[df$Z == 1]) / mean(1 - df$D[df$Z == 0])
+  
+  # Quantile cutoffs
+      
+    yq     <- quantile(Y_D1Z1, probs = q)
+    
+    y1_q   <- quantile(Y_D1Z1, probs = 1 - q)
+    
+    yr     <- quantile(Y_D0Z0, probs = r)
+    
+    y1_r   <- quantile(Y_D0Z0, probs = 1 - r)
+  
+  # Compute the four theta values
+      
+    theta1 <- mean(Y_D1Z1[Y_D1Z1 <= yq])   - mean(Y_D1Z0)
+    
+    theta2 <- mean(Y_D1Z0)                  - mean(Y_D1Z1[Y_D1Z1 >= y1_q])
+    
+    theta3 <- mean(Y_D0Z0[Y_D0Z0 <= yr])   - mean(Y_D0Z1)
+    
+    theta4 <- mean(Y_D0Z1)                  - mean(Y_D0Z0[Y_D0Z0 >= y1_r])
+  
+    
+  c(theta1 = theta1, theta2 = theta2, theta3 = theta3, theta4 = theta4)
+}
+```
 
 
+\newpage
+# Question 5
+
+## Case 1: $\alpha = 0.6$, $\beta = 1$
+
+Generate 100,000 observations with the exclusion restriction violated ($\beta = 1$):
+
+```{r}
+set.seed(123)
+df_beta1 <- simulate_data(n = 100000, alpha = 0.6, beta = 1)
+```
+
+Compute the HM2015 inequality constraints:
+
+```{r}
+theta_beta1 <- get_theta_HM(df_beta1)
+kable(
+  data.frame(
+    Theta = names(theta_beta1),
+    Value = round(theta_beta1, 4),
+    Violated = theta_beta1 > 0
+  ),
+  caption = "HM2015 Inequalities (alpha = 0.6, beta = 1)",
+  booktabs = TRUE,
+  row.names = FALSE
+) %>% kable_styling(latex_options = "hold_position")
+```
+
+We detect a violation: at least one $\theta_j > 0$, meaning the point-identified mean outcome of the always takers (or never takers) falls outside its bounds. This is expected since $\beta = 1$ means $Z$ directly enters the outcome equation, violating the exclusion restriction.
+
+Now compute the Wald estimand and compare to the true LATE. Recall the Function 2 we constructed in Question 1:
+
+$$\hat{\beta}_{IV} = \frac{\bar{Y}_{Z=1} - \bar{Y}_{Z=0}}{\bar{D}_{Z=1} - \bar{D}_{Z=0}}$$
+
+```{r, results='hide'}
+wald_beta1 <- iv_estimate(df_beta1)
+cat("Wald estimand:", round(wald_beta1, 4), "\n")
+cat("True LATE:     1\n")
+cat("Bias:         ", round(wald_beta1 - 1, 4), "\n")
+```
+
+| $\beta$ | Wald Estimand | Bias |
+| --- | --- | --- |
+| 1 | `r round(wald_beta1, 4)` | `r round(wald_beta1 - 1, 4)` |
+
+The Wald estimand is substantially larger than 1. The bias arises because the numerator of the Wald estimand captures both the treatment effect of $D$ and the direct effect $\beta Z$, inflating the estimate.
+
+## Case 2: $\alpha = 0.6$, $\beta = 0$
+
+Repeat with the exclusion restriction satisfied ($\beta = 0$):
+
+```{r}
+set.seed(123)
+df_beta0 <- simulate_data(n = 100000, alpha = 0.6, beta = 0)
+```
+
+Compute the HM2015 inequality constraints:
+
+```{r}
+theta_beta0 <- get_theta_HM(df_beta0)
+kable(
+  data.frame(
+    Theta = names(theta_beta0),
+    Value = round(theta_beta0, 4),
+    Violated = theta_beta0 > 0
+  ),
+  caption = "HM2015 Inequalities (alpha = 0.6, beta = 0)",
+  row.names = FALSE
+) %>% kable_styling(latex_options = "hold_position")
+```
+
+All four $\theta_j \leq 0$: no violation detected, which is consistent with the fact that all LATE assumptions hold when $\beta = 0$.
+
+Compute the Wald estimand:
+
+```{r, results='hide'}
+wald_beta0 <- iv_estimate(df_beta0)
+cat("Wald estimand:", round(wald_beta0, 4), "\n")
+cat("True LATE:     1\n")
+cat("Bias:         ", round(wald_beta0 - 1, 4), "\n")
+```
+
+The Wald estimand is close to 1 with negligible bias, confirming it correctly identifies the LATE when the exclusion restriction holds. Combining with the results from Q2e, all four LATE assumptions are satisfied when $\beta = 0$, so the Wald estimand can be interpreted as the LATE.
 
 
+| $\beta$ | Wald Estimand | Bias |
+| --- | --- | --- |
+| 0 | `r round(wald_beta0, 4)` | `r round(wald_beta0 - 1, 4)` |
 
 
 
