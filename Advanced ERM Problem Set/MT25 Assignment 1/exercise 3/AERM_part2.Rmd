@@ -1,0 +1,143 @@
+---
+title: "AERM_part2"
+subtitle: MT25 Assignment 1 - Part 2
+author: "Candidate Number: 1091806"
+date: "2026-03-25"
+output:
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    toc_depth: 2
+    number_sections: false
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{booktabs}
+---
+
+# Libraries
+```{r}
+# load libraries
+
+library(mvtnorm)  # Question 1
+library(knitr)    # Question 1
+```
+
+\newpage
+# Question 1
+
+**Model recap**:
+
+$$Y = D + \beta Z + U$$
+
+$$D = \mathbf{1}\{\alpha Z + \epsilon > 0\}$$
+
+$$\begin{pmatrix} U \\ \epsilon \end{pmatrix} \sim N\left(\mathbf{0}, \Sigma\right), \quad \Sigma = \begin{pmatrix} 1 & 0.5 \\ 0.5 & 1 \end{pmatrix}$$
+
+$$Z \sim \text{Bernoulli}(0.5), \quad \text{independent of } (U, \epsilon)$$
+
+Construct Function 1: Data Generating Process (DGP) simulation 
+```{r}
+# DGP simulation function
+
+simulate_data <- function(n, alpha, beta) {
+  
+  # Draw the correlated errors, (U, epsilon)
+    
+    # Construct sigma
+    
+      Sigma <- matrix(c(1, 0.5, 0.5, 1), nrow = 2)
+    
+    # Construct errors 
+    
+      errors <- rmvnorm(n, mean = c(0, 0), sigma = Sigma)
+    
+    U <- errors[, 1]
+    eps <- errors[, 2]
+  
+  # Draw the instrument Z, independent of errors
+ 
+    Z <- rbinom(n, size = 1, prob = 0.5)
+  
+  # Generate treatment D from the selection equation
+       
+    D <- as.integer(alpha * Z + eps > 0)
+      
+  # Generate outcome Y from the outcome equation    
+      
+    Y <- D + beta * Z + U
+  
+  # Return a data frame with named columns D, Z, and Y
+      
+    data.frame(D = D, Z = Z, Y = Y)
+}
+```
+
+Construct Function 2: Wald (IV) estimator
+
+$$\hat{\beta}_{IV} = \frac{\bar{Y}_{Z=1} - \bar{Y}_{Z=0}}{\bar{D}_{Z=1} - \bar{D}_{Z=0}}$$
+```{r}
+# Wald (IV) estimator
+
+iv_estimate <- function(df) {
+  
+  # Numerator: reduced-form effect of Z on Y
+    
+    ey1 <- mean(df$Y[df$Z == 1])
+    ey0 <- mean(df$Y[df$Z == 0])
+  
+  # Denominator: first-stage effect of Z on D
+  
+    ed1 <- mean(df$D[df$Z == 1])
+    ed0 <- mean(df$D[df$Z == 0])
+      
+      
+    (ey1 - ey0) / (ed1 - ed0)
+    }
+```
+
+Test with beta = 0, exclusion restriction holds:
+```{r}
+# The Wald estimand should converge to the true LATE = 1
+
+# Set seed
+  
+    set.seed(123)
+
+# Run tests:
+
+  results <- data.frame(
+    n     = rep(10^5, 3),
+    alpha = c(0.6, 1.5, 0.6),
+    beta  = c(0, 0, 1),
+    
+    IV_estimate = c(
+      
+    # Test 1: beta=0 (exclusion holds) -> IV should be close to 1
+      
+      iv_estimate(simulate_data(10^5, alpha = 0.6, beta = 0)),
+    
+    # Test 2: beta=0 with stronger first stage -> IV still close to 1
+    
+      iv_estimate(simulate_data(10^5, alpha = 1.5, beta = 0)),
+    
+    # Test 3: beta=1 (exclusion violated) -> IV biased away from 1
+      
+      iv_estimate(simulate_data(10^5, alpha = 0.6, beta = 1))
+  )
+)
+
+# Display results
+  
+  kable(results, digits = 4, caption = "IV estimates for different parameter values")
+```
+
+
+
+
+
+
+
+
+
+
+
