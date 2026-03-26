@@ -189,7 +189,19 @@ If $\alpha = 0$, the instrument has no effect on $D$ and there are **no complier
 
 A larger $\alpha$ means that $Z = 1$ pushes more individuals over the zero threshold, **increasing the share of compliers** (those whose treatment status changes with $Z$). 
 
+## 2e)
 
+The LATE model requires four assumptions. We check each in turn:
+
+1. **Unconfounded Type:** $Z \sim \text{Bernoulli}(0.5)$, independent of $(U, \epsilon)$. Since compliance type is determined entirely by $\epsilon$, and $Z \perp \epsilon$, **this holds**.
+
+2. **No Defiers / Monotonicity:** Potential treatment status is $D(z) = \mathbf{1}\{\alpha z + \epsilon > 0\}$. For $\alpha > 0$: $D(1) = \mathbf{1}\{\alpha + \epsilon > 0\} \geq \mathbf{1}\{\epsilon > 0\} = D(0)$ for all $\epsilon$, so $D(1) \geq D(0)$ always. No defiers exist, **this holds**.
+
+3. **Existence of Compliers:** Compliers are individuals with $-\alpha < \epsilon \leq 0$, for whom $D(0) = 0$ but $D(1) = 1$. Since $\epsilon \sim N(0,1)$, this set has positive probability whenever $\alpha \neq 0$. **This holds**.
+
+4. **Mean Exclusion:** Potential outcomes are $Y_d = d + \beta Z + U$, which depend on $Z$ directly when $\beta \neq 0$. So this assumption is **violated when $\beta \neq 0$**, and **satisfied only when $\beta = 0$**.
+
+In summary, assumptions 1--3 always hold (for $\alpha > 0$). The exclusion restriction holds only when $\beta = 0$.
 
 
 
