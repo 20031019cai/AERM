@@ -1,5 +1,5 @@
 ---
-title: "Advanced Empirical Research Methods)"
+title: "Advanced Empirical Research Methods"
 subtitle: MT25 Assignment 1 - Part 2
 author: "Candidate Number: 1091806"
 date: "2026-03-25"
@@ -9,6 +9,8 @@ output:
     latex_engine: xelatex
     toc_depth: 2
     number_sections: false
+urlcolor: blue
+linkcolor: blue
 header-includes:
   - \usepackage{amsmath}
   - \usepackage{booktabs}
@@ -641,65 +643,7 @@ We need to trim the distribution from extreme values. Here, I decide to use a 1%
     filter(income_5yrs >= lower_bound & income_5yrs <= upper_bound)
 ```
 
-We can use a shaded density plot to visualise the trimmed dataset. We map the 'fill' aesthetic to a condition based on the calculated 'x' value of the density curve after estimation.
-
-```{r}
-# Pre-compute the density coordinates to bypass the ribbon error
-
-  dens <- density(STEM_data$income_5yrs, na.rm = TRUE)
-  dens_df <- data.frame(x = dens$x, y = dens$y) |>
-    mutate(
-      
-      # Create a flag for whether the x value is inside the 1% to 99% bounds
-      Area = case_when(
-        x >= lower_bound & x <= upper_bound ~ "Analysis Sample (Kept Data)",
-        TRUE ~ "Trimmed Area (Outside 1st-99th percentile)"
-      )
-    )
-  
-# Now we compute the pre_computed coordinates using geom_area
-  
-  trim_visual_plot <- ggplot(dens_df, aes(x = x, y = y)) +
-    
-    # Fill the areas based on our Area flag
-      
-      geom_area(aes(fill = Area), alpha = 0.75) +
-   
-    # Add the outline of the entire density curve on top for crispness
-    
-      geom_line(color = "#555555", size = 0.5) +
-  
-    
-  # Define the explicit colors
-    
-    scale_fill_manual(
-      values = c("Analysis Sample (Kept Data)" = "#0073C2FF", 
-                 "Trimmed Area (Outside 1st-99th percentile)" = "grey80"),
-      name = "Data Usage Strategy"
-    ) +
-  
-  # Add visual markers for the threshold points
-  
-    geom_vline(xintercept = c(lower_bound, upper_bound), 
-             linetype = "dashed", color = "firebrick3", size = 0.8) +
-  
-  # Comprehensive labels and dynamic subtitle
-    
-    labs(title = "Outcome Variable Distribution and Trimming Bounds",
-         subtitle = sprintf("Data range kept for HM/MW analysis: [%.2f, %.2f]", 
-                            lower_bound, upper_bound),
-         x = "Income (5 Years Post-Graduation)",
-         y = "Density") +
-  
-  theme_minimal() +
-  theme(legend.position = "bottom",
-        plot.title = element_text(face = "bold"),
-        plot.subtitle = element_text(color = "grey30"))
-
-# Display the visual confirmation
-
-  print(trim_visual_plot)
-```
+The MW2017 conditional inequalities are also evaluated across a grid of $y$ values for each cohort. The resulting plots can be found in the **[Appendix](#appendix)**. We can use a shaded density plot to visualise the trimmed dataset. We map the 'fill' aesthetic to a condition based on the calculated 'x' value of the density curve after estimation.
 
 **Step 2: Ensure Monotonicity**
 
@@ -871,27 +815,175 @@ Under the MW2017 framework, the joint independence assumption is violated if eit
 
 Looking at our faceted plot, we can see that for **all 4 cohort-instrument combinations, at least one** of the moment curves crosses above the red threshold line ($0$). This reveals the sharp detection power of the MW2017 test. 
 
-While Z1 (Mother's education) managed to pass the looser HM2015 mean-based test, the MW2017 pointwise evaluation detects localized divergences across the income distribution. Consequently, we must conclude that neither Z1 nor Z2 are valid instruments for identifying the LATE under the strict joint independence assumption.
+While Z1 (Mother's education) managed to pass the looser HM2015 mean-based test, the MW2017 pointwise evaluation detects localized divergences across the income distribution. Consequently, we observe positive values of $\theta(y,d)$ for all cohorts, suggesting possible violations. However, without a formal test of statistical significance for the MW2017 inequalities, we cannot conclusively reject instrument validity based on these pointwise estimates alone
 
 \newpage
 
 # Question 10
 
-Previously, we evaluated the HM2015 inequalities using sample point estimates. However, those point estimates are subject to sampling uncertainty. To test whether the observed violations are statistically significant, i.e. structural rather than just noise, we implement the recentered bootstrap procedure with a Bonferroni adjustment as outlined by HM2015.
+Previously, we evaluated the HM2015 inequalities using sample point estimates. However, those point estimates are subject to sampling uncertainty. 
+
+To test whether the observed violations are statistically significant, i.e. structural rather than just noise, we implement the recentered bootstrap procedure with a Bonferroni adjustment as outlined by HM2015.
 
 We test the null hypothesis ($H_0$) that all four inequalities hold ($\theta_1, \dots, \theta_4 \le 0$).
 
+**To handle weak instruments:**
+
+Because `Female_Z1` has a very weak first stage, random resampling will occasionally flip the monotonicity direction, causing probability bounds to mathematically exceed 1. We use a `tryCatch()` block to safely drop these invalid econometric resamples.
 
 ```{r}
-# Define te statistic function required by the 'boot'package'
+# Define the statistic function with robust error handling
+
+  theta_boot_stat <- function(data, indices) {
+    boot_sample <- data[indices, ]
+  
+  # Use tryCatch to safely skip these invalid econometric resamples
+    res <- tryCatch({
+      get_theta_HM(boot_sample)
+    }, error = function(e) {
+      # If the resample violates probability bounds, return NAs
+      return(c(NA, NA, NA, NA))
+    })
+    
+    return(res)
+  }
 
 
-
-
+# Define our wrapper function for the HM Bootstrap procedure
+    
+    run_hm_bootstrap <- function(df, R = 1000, seed = 1776) {
+      set.seed(seed)
+  
+  # Run the bootstrap
+ 
+      boot_out <- boot(data = df, statistic = theta_boot_stat, R = R)
+  
+  # Extract original estimates (t0) and bootstrap estimates (t)
+  
+      t0 <- boot_out$t0
+  
+      t_star <- boot_out$t
+  
+  # Recenter the bootstrap distribution: theta_star_recentered = theta_star - t0
+  
+      t_recentered <- sweep(t_star, 2, t0, FUN = "-")
+  
+  # Estimate standard errors from bootstrap distribution
+  
+      se <- apply(t_star, 2, sd, na.rm = TRUE)
+  
+  # Calculate studentized p-values (ignoring dropped resamples)
+  
+      p_vals <- sapply(1:4, function(i) {
+        mean(t_recentered[, i] / se[i] > t0[i] / se[i], na.rm = TRUE)
+      })
+  
+  # Apply Bonferroni adjustment (multiply by 4 constraints, cap maximum at 1)
+  
+      p_adj <- pmin(p_vals * 4, 1)
+  
+  # Find the most binding constraint
+  
+      most_binding_idx <- which.min(p_adj)
+  
+  # Return a neat tibble of the results
+    tibble(
+      Most_Binding_Theta = paste0("Theta_", most_binding_idx),
+      Original_Estimate = t0[most_binding_idx],
+      Bonferroni_P_Value = p_adj[most_binding_idx],
+      Reject_H0 = p_adj[most_binding_idx] < 0.05
+    )
+  }
 ```
 
+We map this robust bootstrap across all four cohorts.
+
+```{r}
+# Map the robust bootstrap function across our cohorts
+ 
+    boot_summary <- imap_dfr(cohorts, function(df, cohort_name) {
+      res <- run_hm_bootstrap(df, R = 1000)
+      res$Cohort <- cohort_name
+      res |> select(Cohort, everything())
+    })
+
+# Display results
+
+    kable(boot_summary, digits = 4, caption = "HM2015 Bonferroni-Adjusted Bootstrap Results (R=1000)")
+```
+
+The bootstrap separates true structural violations from sampling noise:
+
+- Z1 (Both Genders): Fail to reject $H_0$ ($p = 1.000$). We lack the statistical evidence to claim Z1 violates the mean exclusion restriction.
+
+- Z2 (Male): Fail to reject $H_0$ ($p = 1.000$). The positive $\theta$ observed in Question 9 was merely sampling variation driven by a weak first stage, not a true violation.
+
+- Z2 (Female): Reject $H_0$ ($p < 0.05$). This is a highly significant structural violation. It indicates the proportion of female faculty likely affects the 5-year post-graduation income of female "never-takers" directly, invalidating it as an instrument for estimating the LATE.
 
 
+\newpage
+
+# Appendix {#appendix}
+
+## MW2017 Inequality Plots (Question 9)
+
+```{r}
+# Pre-compute the density coordinates to bypass the ribbon error
+
+  dens <- density(STEM_data$income_5yrs, na.rm = TRUE)
+  dens_df <- data.frame(x = dens$x, y = dens$y) |>
+    mutate(
+      
+      # Create a flag for whether the x value is inside the 1% to 99% bounds
+      Area = case_when(
+        x >= lower_bound & x <= upper_bound ~ "Analysis Sample (Kept Data)",
+        TRUE ~ "Trimmed Area (Outside 1st-99th percentile)"
+      )
+    )
+  
+# Now we compute the pre_computed coordinates using geom_area
+  
+  trim_visual_plot <- ggplot(dens_df, aes(x = x, y = y)) +
+    
+    # Fill the areas based on our Area flag
+      
+      geom_area(aes(fill = Area), alpha = 0.75) +
+   
+    # Add the outline of the entire density curve on top for crispness
+    
+      geom_line(color = "#555555", size = 0.5) +
+  
+    
+  # Define the explicit colors
+    
+    scale_fill_manual(
+      values = c("Analysis Sample (Kept Data)" = "#0073C2FF", 
+                 "Trimmed Area (Outside 1st-99th percentile)" = "grey80"),
+      name = "Data Usage Strategy"
+    ) +
+  
+  # Add visual markers for the threshold points
+  
+    geom_vline(xintercept = c(lower_bound, upper_bound), 
+             linetype = "dashed", color = "firebrick3", size = 0.8) +
+  
+  # Comprehensive labels and dynamic subtitle
+    
+    labs(title = "Outcome Variable Distribution and Trimming Bounds",
+         subtitle = sprintf("Data range kept for HM/MW analysis: [%.2f, %.2f]", 
+                            lower_bound, upper_bound),
+         x = "Income (5 Years Post-Graduation)",
+         y = "Density") +
+  
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        plot.title = element_text(face = "bold"),
+        plot.subtitle = element_text(color = "grey30"))
+
+# Display the visual confirmation
+
+  print(trim_visual_plot)
+```
 
 
 
