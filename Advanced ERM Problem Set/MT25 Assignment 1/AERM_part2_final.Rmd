@@ -18,7 +18,7 @@ header-includes:
 
 # Libraries
 ```{r}
-# Load libraries
+# load libraries
 
 library(mvtnorm)      # Question 1
 library(knitr)        # Question 1, 5
@@ -614,7 +614,7 @@ No. MW2017's testable implications are **sharp** (Theorem 1 in MW2017): they cap
 ```{r}
 # Load data
 
-  STEM_data <- read_dta("STEM_data_for_adv_ERM.dta") |>
+  STEM_data <- read_dta("../exercise 3/STEM_data_for_adv_ERM.dta") |>
     
   # Drop missing values for the variables we care about
     
