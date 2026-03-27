@@ -26,6 +26,8 @@ library(ggplot2)      # Question 8
 library(haven)        # Question 9
 library(dplyr)        # Question 9
 library(purrr)        # Question 9
+library(tidyr)        # Question 9
+library(boot)         # Question 10
 ```
 
 \newpage
@@ -623,7 +625,7 @@ No. MW2017's testable implications are **sharp** (Theorem 1 in MW2017): they cap
     )
 ```
 
-*Step 1: Data Preperation*
+**Step 1: Data Preperation**
 
 We need to trim the distribution from extreme values. Here, I decide to use a 1% and 99% quantile trim.
 
@@ -699,20 +701,194 @@ We can use a shaded density plot to visualise the trimmed dataset. We map the 'f
   print(trim_visual_plot)
 ```
 
+**Step 2: Ensure Monotonicity**
+
+The LATE framework assumes the instrument pushes treatment in a single direction, i.e. No Defiers, $D_i(1) \ge D_i(0)$). A negative first-stage relationship means the instrument actually discourages treatment. To fix this systematically, we check the covariance between $Z$ and $D$. If it's negative, we programmatically flip the instrument ($Z^* = 1 - Z$). This automates the correction, ensuring inputs strictly adhere to the HM and MW test requirements
+
+```{r}
+
+# Function to automate detection of Monotonicity violations (Negative 1st Stage)
+
+  fix_monotonicity <- function(df, z_col_name, group_name) {
+    
+    # Calculate covariance (matches sign of first-stage OLS coefficient)
+    
+      first_stage_cov <- cov(df[[z_col_name]], df$stemdeg)
+    
+      if (first_stage_cov < 0) {
+        message(sprintf("[%s - %s] Negative first stage detected. Recoding Z to 1 - Z.", 
+                        group_name, z_col_name))
+        
+        # Flip the instrument
+        df$Z <- 1 - df[[z_col_name]]
+      } else {
+        message(sprintf("[%s - %s] Positive first stage. Keeping Z as is.", 
+                        group_name, z_col_name))
+        
+        # Keep the instrument as is
+        df$Z <- df[[z_col_name]]
+      }
+    
+    # Standardize column names for the HM and MW functions
+    df <- df |> 
+      rename(D = stemdeg, Y = income_5yrs) |>
+      select(Y, D, Z)
+    
+    return(df)
+  }
+```
 
 
-(TBD: to add visual figure to show which part get trimmed)
 
-*Step 2: Instrument Flipping (Test Monotonicity)*
+**Step 3: DRY Execution of HM2015 Tests**
+
+First, we compile our four cohorts into a list, passing each through our `fix_monotonicity` function to systematically check the first stage.
+
+```{r}
+# Create a named list of our four cohorts, applying our monotonicity fix to each
+
+  cohorts <- list(
+    
+    "Female_Z1" = fix_monotonicity(STEM_clean |> filter(fem == 1), "binmothered", "Female Z1"),
+    
+    "Male_Z1"   = fix_monotonicity(STEM_clean |> filter(fem == 0), "binmothered", "Male Z1"),
+    
+    "Female_Z2" = fix_monotonicity(STEM_clean |> filter(fem == 1), "bin_prop_female_faculty_stem", "Female Z2"),
+    
+    "Male_Z2"   = fix_monotonicity(STEM_clean |> filter(fem == 0), "bin_prop_female_faculty_stem", "Male Z2")
+  )
+```
+
+**Interpretig the First Stage:** 
+
+The console output reveals that three of our four cohorts (Female Z1, Male Z1, and Male Z2) exhibit a **negative first stage**. This indicates that the instrument actually discourages obtaining a STEM degree for these specific groups. If left these unadjusted, this would violate the LATE monotonicity ("No Defiers") assumption. 
+
+Our function caught this and inverted the instrument ($Z = 1 - Z$) to align the treatment direction and satisfy the assumption.
+
+Next, we map the HM2015 test across these adjusted cohorts and compile the results into a clean summary table.
+
+```{r}
+# Map the HM2015 test across all cohorts and compile a summary table
+
+  hm_summary <- imap_dfr(cohorts, function(df, cohort_name) {
+   
+     # Get the four moment inequalities
+   
+      thetas <- get_theta_HM(df)
+    
+    # A violation occurs if ANY theta is strictly greater than 0
+    
+      violation_detected <- any(thetas > 0)
+    
+    # Return as a neat tibble row
+      
+      tibble(
+        Cohort = cohort_name,
+        Theta_1 = thetas[1],
+        Theta_2 = thetas[2],
+        Theta_3 = thetas[3],
+        Theta_4 = thetas[4],
+        HM_Pass = !violation_detected
+      )
+    })
+
+# Print a clean Markdown table using kable
+kable(hm_summary, digits = 4, caption = "HM2015 Test Results by Cohort")
+```
+
+The table shows that instrument **Z1** (Mother's education) passes the HM2015 test for both genders, as all $\theta \le 0$. This means we do not detect a violation of the mean exclusion restriction under this framework.
+
+Conversely, instrument **Z2** (Proportion of female faculty) fails for both genders. The positive $\theta$ values (specifically $\theta_4$ for females and $\theta_2, \theta_3$ for males) indicate that the mean potential outcomes for certain compliance types fall outside their bounds. This implies Z2 likely has a direct effect on 5-year income outside of the STEM degree channel, violating the exclusion restriction.
+
+**Step 4: Visualising the MW2017 Test**
+
+While the HM2015 test checks unconditional means, the MW2017 test is more rigorous: it evaluates conditional moment inequalities across the entire continuous distribution of the outcome variable. To do this, we calculate $\theta(y, 0)$ and $\theta(y, 1)$ across a grid of income values (from the 5th to the 95th percentile) for each cohort.
+
+Instead of printing a massive, unreadable table of these pointwise calculations, we can visualize all four cohorts simultaneously using a faceted plot.
+
+
+```{r}
+# Map the MW test across a grid of Y values for all cohorts
+
+  mw_results <- imap_dfr(cohorts, function(df, cohort_name) {
+    
+    # Define the evaluation grid: 5th to 95th percentile to avoid boundary noise
+    
+      y_grid <- seq(quantile(df$Y, 0.05), quantile(df$Y, 0.95), length.out = 100)
+    
+    # Compute MW thetas for each y in the grid
+        
+      res <- map_dfr(y_grid, function(y_val) {
+        mw_thetas <- get_theta_MW(df, y_val)
+        tibble(Y = y_val, theta_y_1 = mw_thetas[1], theta_y_0 = mw_thetas[2])
+      })
+    
+    # Tag the results with the cohort name
+      
+      res$Cohort <- cohort_name
+      return(res)
+  })
+
+# Pivot the data for ggplot (to a long format)
+
+  mw_long <- mw_results |>
+    pivot_longer(cols = starts_with("theta"), 
+                 names_to = "Moment", 
+                 values_to = "Value")
+
+# Create a faceted plot for MW2017 Results
+  
+  mw_plot <- ggplot(mw_long, aes(x = Y, y = Value, color = Moment)) +
+    geom_line(linewidth = 1) +
+    
+  # Add the critical threshold line (0)
+    
+    geom_hline(yintercept = 0, linetype = "dashed", color = "firebrick", linewidth = 0.8) +
+    
+  # Facet by cohort to get 4 separate panels in one clean graphic
+    
+    facet_wrap(~ Cohort, scales = "free_x") + 
+  
+  # Beautifying the graph
+   
+    scale_color_manual(values = c("theta_y_0" = "#E69F00", "theta_y_1" = "#56B4E9"),
+                       labels = c(expression(theta(y,0)), expression(theta(y,1)))) +
+    labs(title = "MW2017 Testable Inequalities by Gender and Instrument",
+         subtitle = "Any curve crossing above the red dashed line indicates a LATE violation.",
+         x = "Hourly Income 5 Years Post-Graduation (Y)",
+         y = expression(theta(y,d))) +
+    theme_bw() +
+    theme(legend.position = "bottom",
+          strip.background = element_rect(fill = "grey90"),
+          strip.text = element_text(face = "bold"))
+
+# Display the final plot
+
+  print(mw_plot)
+```
+
+Under the MW2017 framework, the joint independence assumption is violated if either $\theta(y, 0)$ or $\theta(y, 1)$ becomes strictly positive for any value of $Y$. 
+
+Looking at our faceted plot, we can see that for **all 4 cohort-instrument combinations, at least one** of the moment curves crosses above the red threshold line ($0$). This reveals the sharp detection power of the MW2017 test. 
+
+While Z1 (Mother's education) managed to pass the looser HM2015 mean-based test, the MW2017 pointwise evaluation detects localized divergences across the income distribution. Consequently, we must conclude that neither Z1 nor Z2 are valid instruments for identifying the LATE under the strict joint independence assumption.
+
+\newpage
+
+# Question 10
+
+Previously, we evaluated the HM2015 inequalities using sample point estimates. However, those point estimates are subject to sampling uncertainty. To test whether the observed violations are statistically significant, i.e. structural rather than just noise, we implement the recentered bootstrap procedure with a Bonferroni adjustment as outlined by HM2015.
+
+We test the null hypothesis ($H_0$) that all four inequalities hold ($\theta_1, \dots, \theta_4 \le 0$).
+
+
+```{r}
+# Define te statistic function required by the 'boot'package'
 
 
 
-*Step 3: DRY Execution (FOR WHAT)*
 
-
-*Step 4: Visualizing the MW Test*
-
-
+```
 
 
 
