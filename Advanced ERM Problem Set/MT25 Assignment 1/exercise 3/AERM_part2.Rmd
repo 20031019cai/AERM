@@ -18,11 +18,14 @@ header-includes:
 ```{r}
 # load libraries
 
-library(mvtnorm)  # Question 1
-library(knitr)    # Question 1, 5
+library(mvtnorm)      # Question 1
+library(knitr)        # Question 1, 5
 library(modelsummary) # Question 5
-library(kableExtra) # Question 5
-library(ggplot2) # Question 8
+library(kableExtra)   # Question 5
+library(ggplot2)      # Question 8
+library(haven)        # Question 9
+library(dplyr)        # Question 9
+library(purrr)        # Question 9
 ```
 
 \newpage
@@ -301,7 +304,7 @@ get_theta_HM <- function(df) {
 \newpage
 # Question 5
 
-## Case 1: $\alpha = 0.6$, $\beta = 1$
+**Case 1: $\alpha = 0.6$, $\beta = 1$ **
 
 Generate 100,000 observations with the exclusion restriction violated ($\beta = 1$):
 
@@ -345,7 +348,7 @@ cat("Bias:         ", round(wald_beta1 - 1, 4), "\n")
 
 The Wald estimand is substantially larger than 1. The bias arises because the numerator of the Wald estimand captures both the treatment effect of $D$ and the direct effect $\beta Z$, inflating the estimate.
 
-## Case 2: $\alpha = 0.6$, $\beta = 0$
+**Case 2: $\alpha = 0.6$, $\beta = 0$**
 
 Repeat with the exclusion restriction satisfied ($\beta = 0$):
 
@@ -601,10 +604,36 @@ With $\beta = 0.5$, HM2015 **fails** to detect the violation while MW2017 succes
 
 No. MW2017's testable implications are **sharp** (Theorem 1 in MW2017): they capture all observable violations of LI + LM. Any violation detected by HM2015 necessarily implies a violation of the MW2017 inequalities, so MW2017 would detect it too. The converse is not true, as demonstrated above.
 
-
+\newpage
 # Question 9
 
-```{r}
-
+```{r, message=FALSE, warning=FALSE}
+# Load data (adjust path as needed)
+STEM_data <- read_dta("STEM_data_for_adv_ERM.dta") 
 ```
+
+
+*Step 1: Data Preperation*
+
+We need to trim the distribution from extreme values. Here, I decide to use a 1% and 99% quantile trim.
+
+
+
+(TBD: to add visual figure to show which part get trimmed)
+
+*Step 2: Instrument Flipping (Test Monotonicity)*
+
+
+
+*Step 3: DRY Execution (FOR WHAT)*
+
+
+*Step 4: Visualizing the MW Test*
+
+
+
+
+
+
+
 
