@@ -607,15 +607,97 @@ No. MW2017's testable implications are **sharp** (Theorem 1 in MW2017): they cap
 \newpage
 # Question 9
 
-```{r, message=FALSE, warning=FALSE}
-# Load data (adjust path as needed)
-STEM_data <- read_dta("STEM_data_for_adv_ERM.dta") 
-```
+```{r}
+# Load data
 
+  STEM_data <- read_dta("STEM_data_for_adv_ERM.dta") |>
+    
+  # Drop missing values for the variables we care about
+    
+    filter(
+      !is.na(fem),
+      !is.na(binmothered),
+      !is.na(bin_prop_female_faculty_stem),
+      !is.na(stemdeg),
+      !is.na(income_5yrs)
+    )
+```
 
 *Step 1: Data Preperation*
 
 We need to trim the distribution from extreme values. Here, I decide to use a 1% and 99% quantile trim.
+
+```{r}
+# Calculate the 1st and 99th percentiles for a 1% trim
+
+  lower_bound <- quantile(STEM_data$income_5yrs, 0.01)
+  upper_bound <- quantile(STEM_data$income_5yrs, 0.99)
+  
+# Apply the trim, and make it a clean dataset
+    
+  STEM_clean <- STEM_data |>
+    filter(income_5yrs >= lower_bound & income_5yrs <= upper_bound)
+```
+
+We can use a shaded density plot to visualise the trimmed dataset. We map the 'fill' aesthetic to a condition based on the calculated 'x' value of the density curve after estimation.
+
+```{r}
+# Pre-compute the density coordinates to bypass the ribbon error
+
+  dens <- density(STEM_data$income_5yrs, na.rm = TRUE)
+  dens_df <- data.frame(x = dens$x, y = dens$y) |>
+    mutate(
+      
+      # Create a flag for whether the x value is inside the 1% to 99% bounds
+      Area = case_when(
+        x >= lower_bound & x <= upper_bound ~ "Analysis Sample (Kept Data)",
+        TRUE ~ "Trimmed Area (Outside 1st-99th percentile)"
+      )
+    )
+  
+# Now we compute the pre_computed coordinates using geom_area
+  
+  trim_visual_plot <- ggplot(dens_df, aes(x = x, y = y)) +
+    
+    # Fill the areas based on our Area flag
+      
+      geom_area(aes(fill = Area), alpha = 0.75) +
+   
+    # Add the outline of the entire density curve on top for crispness
+    
+      geom_line(color = "#555555", size = 0.5) +
+  
+    
+  # Define the explicit colors
+    
+    scale_fill_manual(
+      values = c("Analysis Sample (Kept Data)" = "#0073C2FF", 
+                 "Trimmed Area (Outside 1st-99th percentile)" = "grey80"),
+      name = "Data Usage Strategy"
+    ) +
+  
+  # Add visual markers for the threshold points
+  
+    geom_vline(xintercept = c(lower_bound, upper_bound), 
+             linetype = "dashed", color = "firebrick3", size = 0.8) +
+  
+  # Comprehensive labels and dynamic subtitle
+    
+    labs(title = "Outcome Variable Distribution and Trimming Bounds",
+         subtitle = sprintf("Data range kept for HM/MW analysis: [%.2f, %.2f]", 
+                            lower_bound, upper_bound),
+         x = "Income (5 Years Post-Graduation)",
+         y = "Density") +
+  
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        plot.title = element_text(face = "bold"),
+        plot.subtitle = element_text(color = "grey30"))
+
+# Display the visual confirmation
+
+  print(trim_visual_plot)
+```
 
 
 
