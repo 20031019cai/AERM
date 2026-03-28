@@ -6,32 +6,17 @@ date: "2026-03-25"
 output: pdf_document
 ---
 
-# MT25 Assignment 1 — File Description
+# MT25 Assignment 1 — File Description for Part 1
 
 **Candidate Number:** 1091806
 
-## Part 1: Computational Macroeconomics (Julia)
-
 All Julia scripts are in the `part1_scripts/` folder.
 
-### Exercise 1
 
 | File | Description |
 | --- | --- |
-| `exercise1.jl` | Main script for Exercise 1: value function iteration, policy functions, and simulation |
-
-### Exercise 2
-
-| File | Description |
-| --- | --- |
-| `ex2_kfe.jl` | Kolmogorov Forward Equation for stationary distribution |
+| `exercise1.jl` | Script for Exercise 1 |
+| `exercise2.jl` | Script for Exercise 2 |
+| `ex2_kfe.jl` | Kolmogorov Forward Equation for stationary distribution for Exercise 2 |
 | `ex2_parameters.jl` | Parameter definitions for Exercise 2 |
 | `ex2_vfi.jl` | Value function iteration for Exercise 2 |
-| `exercise2.jl` | Main script that calls all Exercise 2 modules |
-
-## Part 2: Advanced Empirical Research Methods (R)
-
-| File | Description |
-| --- | --- |
-| `AERM_part2.Rmd` | R Markdown source file containing all code, output, and written answers |
-| `AERM_part2.pdf` | Compiled PDF of Part 2 |
