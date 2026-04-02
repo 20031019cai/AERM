@@ -81,20 +81,14 @@ $$\tilde{y}_{i,t} = \beta_{FE} \tilde{y}_{i,t-1} + \tilde{u}_{i,t}, \quad \tilde
 
 | Coefficient | Estimate | 
 |-------------|----------|
-| $\alpha_{OLS}$ | 0.1535 |
+| $\beta_{OLS}$  | 0.8977 |
 | $\beta_{FE}$   | 0.5690 |
 
-The true population regression slope is $\beta = 2\rho - 1 = 0.9$, since $E[y_{t+1}|y_t]$ is linear in $y_t$ with slope $2\rho - 1$ when $y \in \{1,2\}$. OLS is close to this true value because the DGP contains no individual heterogeneity, so $E[y_{i,t-1} u_{i,t}] = 0$ and OLS is consistent. The FE estimator suffers from Nickell bias: demeaning over a short panel ($T=8$) induces a mechanical negative correlation between $\tilde{y}_{i,t-1}$ and $\tilde{u}_{i,t}$, biasing $\hat{\beta}_{FE}$ substantially downward. As the Monte Carlo simulations below confirm, this downward bias increases systematically with $\rho$.
+The true population regression slope is $\beta = 2\rho - 1 = 0.9$, since $E[y_{t+1}|y_t]$ is linear in $y_t$ with slope $2\rho - 1$ when $y \in \{1,2\}$. 
 
-```{r, echo=FALSE, fig.align='center', out.width='40%'}
-knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_0.pdf")
-knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_05.pdf")
-knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_2.pdf")
-knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_5.pdf")
-knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_7.pdf")
-knitr::include_graphics("../exercise 1/results/fig_ex1_q4_rho_0_95.pdf")
+OLS is therefore closer to the truth, because the DGP contains no individual heterogeneity, so $E[y_{i,t-1} u_{i,t}] = 0$ and OLS is consistent. 
 
-```
+The FE bias is systematic: it increases with ρ, because the estimator suffers from Nickell bias, ie. demeaning over a short panel ($T=8$) induces a mechanical negative correlation between $\tilde{y}_{i,t-1}$ and $\tilde{u}_{i,t}$, biasing $\hat{\beta}_{FE}$ substantially downward. 
 
 \newpage
 
@@ -119,18 +113,19 @@ For $\rho = 1$ the transition matrix is the identity, making both income states 
 
 Table of counterfactual aggregate asset supply:
 
-| | $B(\rho=0, c=c_{.5})$ | $B(\rho=.95, c=c_{.5})$ |
-|---|---|---|
-| Asset Supply | -0.11499999999999998 | 0.5655346767345566 |
+| Counterfactual | Asset Supply |
+|----------------|-------------|
+| $B(\rho = 0, \, c = c^{.5})$   | $-0.1150$ |
+| $B(\rho = .95, \, c = c^{.5})$ | $\phantom{-}0.5655$ |
 
 ## Question 2b
 
 Table of decompositions:
 
-| $\rho$ | $T_{total}$ | $T_1$ (%) | $T_2$ (%) |
-|--------|------------|-----------|-----------|
-| 0.00   | -0.3035   | 52.9  | 47.1  |
-| 0.95   | -0.4719   | 213.9  | -113.9  |
+| $\rho$ | $T_{total}$ | $T_1$ (\%) | $T_2$ (\%) |
+|--------|-------------|------------|------------|
+| 0.00   | $-0.3035$   | 52.9       | 47.1       |
+| 0.95   | $-0.4719$   | 213.9      | $-113.9$   |
 
 
 ## Question 2c
