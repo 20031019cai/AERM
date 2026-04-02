@@ -507,15 +507,18 @@ get_theta_MW <- function(data, y) {
   
     G0 <- p0 * (1 - data$D) * data$Z - p1 * (1 - data$D) * (1 - data$Z)
   
-  # Nadaraya-Watson kernel estimator of conditional expectation
+  # Local linear regression: fit G ~ a + b*(Y - y), take intercept
   
     idx <- K > 0
+    Ydiff <- data$Y[idx] - y
   
-    thetay1 <- weighted.mean(G1[idx], K[idx])
+    fit1 <- lm(G1[idx] ~ Ydiff, weights = K[idx])
+    fit0 <- lm(G0[idx] ~ Ydiff, weights = K[idx])
   
-    thetay0 <- weighted.mean(G0[idx], K[idx])
+    thetay1 <- coef(fit1)[1]
+    thetay0 <- coef(fit0)[1]
   
-  c(thetay1 = thetay1, thetay0 = thetay0)
+    c(thetay1 = unname(thetay1), thetay0 = unname(thetay0))
 }
 ```
 
