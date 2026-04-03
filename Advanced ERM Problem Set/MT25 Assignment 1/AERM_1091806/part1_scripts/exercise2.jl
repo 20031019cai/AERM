@@ -74,7 +74,7 @@ for ρ_cf in [0.0, 0.95]
     # Use the benchmark solution's policy_idx, but compute stationary dist under ρ_cf
     μ_cf = stationary_dist(sol_benchmark, ρ_cf, p)
     B_cf[ρ_cf] = agg_asset_supply(μ_cf, sol_benchmark)
-    println("B(ρ=$ρ_cf, c=c^0.5) = $(B_cf[ρ_cf])")
+    println("B(ρ=$ρ_cf, c=c^0.5) = $(round(B_cf[ρ_cf], digits=4))")  # print in 4 decimals for clarity
 end
 
 

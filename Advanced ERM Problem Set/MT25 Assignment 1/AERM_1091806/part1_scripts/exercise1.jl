@@ -239,4 +239,17 @@ using LinearAlgebra
 
     println("FE:   β = $(round(β_fe, digits=4))")
     println("True β = 2ρ - 1 = $(2*0.95 - 1)")
+    println("OLS: α = $(round(β_ols[1], digits=4)), β = $(round(β_ols[2], digits=4))
+")
+
+
+
+
+
+
+
+
+
+
+
 

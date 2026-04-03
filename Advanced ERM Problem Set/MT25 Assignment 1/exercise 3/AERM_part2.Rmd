@@ -683,7 +683,9 @@ The LATE framework assumes the instrument pushes treatment in a single direction
     
     return(df)
   }
+
 ```
+
 
 
 
@@ -706,11 +708,24 @@ First, we compile our four cohorts into a list, passing each through our `fix_mo
   )
 ```
 
+```{r}
+# Quick first-stage summary
+first_stages <- imap_dfr(cohorts, function(df, name) {
+  fs <- lm(D ~ Z, data = df)
+  tibble(Cohort = name, 
+         First_Stage_Coef = coef(fs)["Z"],
+         Instrument_Flipped = name %in% c("Female_Z1", "Male_Z1", "Male_Z2"),
+         N = nrow(df))
+})
+kable(first_stages, digits = 4, caption = "First Stage Coefficients (after monotonicity correction)")
+```
+
+
 **Interpretig the First Stage:** 
 
-The console output reveals that three of our four cohorts (Female Z1, Male Z1, and Male Z2) exhibit a **negative first stage**. This indicates that the instrument actually discourages obtaining a STEM degree for these specific groups. If left these unadjusted, this would violate the LATE monotonicity ("No Defiers") assumption. 
+Three of our four cohorts required instrument flipping (marked TRUE above), meaning the raw instrument discouraged STEM degree attainment for those groups. After correction, all first-stage coefficients are positive, satisfying the monotonicity assumption. 
 
-Our function caught this and inverted the instrument ($Z = 1 - Z$) to align the treatment direction and satisfy the assumption.
+However, Female_Z1 has a near-zero coefficient (0.0044), indicating a very weak first stage, the complier population is tiny, which will limit the power of any downstream test for this cohort.
 
 Next, we map the HM2015 test across these adjusted cohorts and compile the results into a clean summary table.
 
@@ -954,7 +969,7 @@ The bootstrap separates true structural violations from sampling noise:
    
     # Add the outline of the entire density curve on top for crispness
     
-      geom_line(color = "#555555", size = 0.5) +
+      geom_line(color = "#555555", linewidth = 0.5) +
   
     
   # Define the explicit colors
@@ -968,7 +983,7 @@ The bootstrap separates true structural violations from sampling noise:
   # Add visual markers for the threshold points
   
     geom_vline(xintercept = c(lower_bound, upper_bound), 
-             linetype = "dashed", color = "firebrick3", size = 0.8) +
+             linetype = "dashed", color = "firebrick3", linewidth = 0.8) +
   
   # Comprehensive labels and dynamic subtitle
     
