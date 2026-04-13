@@ -1,0 +1,22 @@
+---
+title: "Advanced Empirical Research Methods"
+subtitle: Assigment 1 — README
+author: "Candidate Number: 1091806"
+date: "2026-03-25"
+output: pdf_document
+---
+
+# MT25 Assignment 1 — File Description for Part 1
+
+**Candidate Number:** 1091806
+
+All Julia scripts are in the `part1_scripts/` folder.
+
+
+| File | Description |
+| --- | --- |
+| `exercise1.jl` | Script for Exercise 1 |
+| `exercise2.jl` | Script for Exercise 2 |
+| `ex2_kfe.jl` | Kolmogorov Forward Equation for stationary distribution for Exercise 2 |
+| `ex2_parameters.jl` | Parameter definitions for Exercise 2 |
+| `ex2_vfi.jl` | Value function iteration for Exercise 2 |
