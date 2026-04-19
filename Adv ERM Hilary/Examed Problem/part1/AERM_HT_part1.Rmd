@@ -106,7 +106,7 @@ beer %>%
 
 The data contains `r n_distinct(beer$market_id)` markets and 
 `r nrow(beer)` product-market observations, with between `r min(beer$num_prod_mkt)` 
-and `r max(beer$num_prod_mkt)` products per market (mean `r round(mean(beer$num_prod_mkt), 1)`). 
+and `r max(beer$num_prod_mkt)` products per market (mean `r round(mean(table(beer$market_id)), 1)` products per market, or `r round(mean(beer$num_prod_mkt), 1)` averaging over observations).
 Prices range from £`r round(min(beer$price), 2)` to £`r round(max(beer$price), 2)` 
 with a mean of £`r round(mean(beer$price), 2)`, and are right-skewed — most beers 
 are cheap with a few expensive outliers. Marginal costs range from 
@@ -410,16 +410,22 @@ beer <- beer |>
 | Mean      | `r round(mean(beer$diversion_outside), 3)` | `r round(mean(beer$share_0), 3)` |
 | Median    | `r round(median(beer$diversion_outside), 3)` | `r round(median(beer$share_0), 3)` |
 
-**Comment:** Own-price elasticities are all negative and mostly elastic (below -1), 
-as expected for individual beer products. Backed-out marginal costs are positive 
-and broadly consistent with those in the data. The diversion ratio to the outside 
-good (`r round(mean(beer$diversion_outside), 3)`) is lower than the outside good 
-share (`r round(mean(beer$share_0), 3)`), reflecting that when a beer's price rises, 
-consumers tend to substitute towards other beers rather than exit the market — 
-consistent with $\hat{\sigma} =$ `r round(sigma, 3)` > 0. This highlights a key 
-flexibility limitation: the nested logit forces all within-nest cross-price 
-elasticities to be identical, which may be unrealistic if beers differ substantially 
-in their similarity to one another.
+**Comment:** 
+
+Own-price elasticities range from `r round(min(beer$elast_own), 2)` to 
+`r round(max(beer$elast_own), 2)`, with mean 
+`r round(mean(beer$elast_own), 2)` — all elastic, with most beers roughly 
+1.5× elastic. Backed-out marginal costs are tightly correlated with those 
+in the data (correlation `r round(cor(beer$mc_implied, beer$marginal_cost), 2)`), 
+though systematically shifted slightly below the 45-degree line, suggesting 
+multi-product ownership or other factors we abstract from. The diversion 
+ratio to the outside good (`r round(mean(beer$diversion_outside), 3)`) is 
+far lower than the outside good share 
+(`r round(mean(beer$share_0), 3)`), reflecting strong within-nest 
+substitution consistent with $\hat{\sigma}$ = `r round(sigma, 3)`. This 
+highlights the key flexibility limitation of nested logit: all within-nest 
+cross-price elasticities are forced to be identical, even though real beers 
+differ substantially in their similarity.
 
 
 \newpage
@@ -442,9 +448,10 @@ tax_rate <- 10
 beer <- beer |>
   mutate(
     # Tax increases mc by 10 * alc_j for each product
-    mc_tax = mc_implied + tax_rate * alc_j,
-    delta_mc = mc_tax - mc_implied
-  )
+    
+      mc_tax = mc_implied + tax_rate * alc_j,
+      delta_mc = mc_tax - mc_implied
+    )
 
 cat("Mean marginal cost increase (delta_mc):", 
     round(mean(beer$delta_mc), 4), "\n")
@@ -631,11 +638,14 @@ beer <- beer |>
     # New delta at tax prices:
     
       delta_tax  = delta + alpha * (price - price_tax),  
-   
-    # New shares via logit inversion approximation:
     
-      share_jt_tax = exp(delta_tax / (1 - sigma)) / 
-        (1 + sum(exp(delta_tax / (1 - sigma))^(1 - sigma))^(1/(1-sigma))),
+    # Recompute within-group and group shares correctly
+    
+      exp_d_tax    = exp(delta_tax / (1 - sigma)),
+      sum_eg_tax   = sum(exp_d_tax),
+      sj_g_tax     = exp_d_tax / sum_eg_tax,
+      sg_tax       = sum_eg_tax^(1 - sigma) / (1 + sum_eg_tax^(1 - sigma)),
+      share_jt_tax = sj_g_tax * sg_tax,
       quantity_tax = share_jt_tax * marketsize
     ) |>
     ungroup()
@@ -699,15 +709,16 @@ cat("Implied aggregate elasticity:", round(pct_qty / pct_price, 3), "\n")
 
 **Comment:** 
 
-The average price increase (`r round(mean(beer$delta_price), 3)` £) 
-exceeds the average marginal cost increase (`r round(mean(beer$delta_mc), 3)` £), 
-indicating overshifting of the tax — firms raise prices by more than the cost 
-increase. This is a known feature of nested logit demand. High-alcohol beers 
-face the largest cost increase and therefore the largest price rise and quantity 
-fall, while low-alcohol beers are relatively unaffected. The implied aggregate 
-demand elasticity of `r round(pct_qty / pct_price, 3)` suggests aggregate beer 
-demand is [elastic/inelastic — fill in based on your output], meaning the tax 
-is [effective/ineffective] at reducing total beer consumption.
+The average price increase (£`r round(mean(beer$delta_price), 3)`) exceeds 
+the average marginal cost increase (£`r round(mean(beer$delta_mc), 3)`), 
+indicating overshifting of the tax — firms raise prices by more than the 
+cost increase. This is a known feature of nested logit demand with market 
+power. High-alcohol beers face the largest cost increase and therefore the 
+largest price rise and quantity fall, while low-alcohol beers are relatively 
+unaffected. The implied aggregate demand elasticity of 
+`r round(pct_qty / pct_price, 2)` suggests aggregate beer demand is elastic 
+— aggregate quantity falls more than proportionately to the average price 
+rise — meaning the tax meaningfully reduces total beer consumption.
 
 \newpage
 # Q2. Auto demand
@@ -781,7 +792,7 @@ sample period, reflecting increasing product variety in the US car market.
 
 ## Q2 (a): Estimating Two BLP Specifications
 
-**Prepare Data**
+**Step 1: Prepare Data**
 
 ```{r load-auto data prepare}
 # Rename to match BLPestimatoR conventions
@@ -802,7 +813,7 @@ sample period, reflecting increasing product variety in the US car market.
   autoData <- cbind(autoData, own_pre)
 ```
 
-**Construct BLP Instruments**
+**Step 2: Construct BLP Instruments**
 
 BLP instruments use the sum of characteristics of other products by the 
 same firm ("own" instruments, IV1-5) and rival firms ("rival" instruments, 
@@ -836,7 +847,7 @@ but do not directly enter a consumer's utility for product $j$.
   autoData <- cbind(autoData, sum_other, sum_rival)
 ```
 
-**Income Draws for Specification 2**
+**Step 3: Income Draws for Specification 2**
 
 Specification 2 follows BLP(1995) by interacting price with inverse income 
 $1/y_i$, where income is drawn from a log-normal distribution 
@@ -881,7 +892,7 @@ empirical regularity that richer consumers are less price-sensitive.
   demog_auto <- list(invinc = inv_inc)
 ```
 
-**Model Formulas**
+**Step 4: Model Formulas**
 
 Both specifications share the same linear characteristics and instruments. 
 They differ only in how heterogeneity enters the price coefficient.
@@ -917,7 +928,7 @@ income $1/y_i$ rather than a normal shock.
   )
 ```
 
-**BLP Data Objects**
+**Step 5: BLP Data Objects**
 
 ```{r blp-data-spec1}
 # Specification 1: no demographic draws
@@ -956,7 +967,7 @@ income $1/y_i$ rather than a normal shock.
   )
 ```
 
-**Starting Values**
+**Step 6: Starting Values**
 
 The starting values (`theta_guesses`) specify which random coefficients to 
 estimate and their initial values. `NA` tells `BLPestimatoR` not to estimate 
@@ -973,8 +984,8 @@ only.
 # Spec 1: normal RC on price and all 5 characteristics
 # Use modest positive starting values — BLPestimatoR treats these as sigmas
 
-  theta1 <- matrix(c(1, 1, 1, 1, 1, 1),
-                   nrow = 6, ncol = 1)
+  theta1 <- matrix(c(0.1, 3, 1, 1, 0.5, 0.5),
+                 nrow = 6, ncol = 1)
   rownames(theta1) <- c("price", "const", "hpwt", "air", "mpd", "space")
   colnames(theta1) <- "unobs_sd"
   
@@ -998,7 +1009,7 @@ only.
   theta2
 ```
 
-**Estimate Both Specifications**
+**Step 7: Estimate Both Specifications**
 
 We use BFGS optimisation with a relative tolerance of $10^{-10}$ and up to 
 1000 iterations. Cluster standard errors are computed at the model level 
@@ -1058,12 +1069,406 @@ objective value. Results were broadly stable across starting values close
 to those reported, but some distant starting values produced numerical 
 problems or convergence to inferior local minima.
 
-**Comparison of specifications:** [Fill in after seeing output — key things 
-to note are: (1) sign and magnitude of price-related parameters, (2) whether 
-income interaction in Spec 2 implies richer consumers are less price-sensitive 
-as expected, (3) differences in characteristic parameters between specs.
+**Comparison of specifications:** Both models produce negative price effects, 
+but they operate differently. Spec 1 has $\hat{\sigma}_p$ = 
+`r round(car_est_s1$theta_rc["unobs_sd*price"], 2)` on price (significant), 
+implying heterogeneity in price sensitivity but no systematic link to 
+observable demographics. Spec 2 has `invinc*price` = 
+`r round(car_est_s2$theta_rc["invinc*price"], 2)` (significant), meaning 
+consumers with low income (high $1/y_i$) are much more price-sensitive — 
+exactly the BLP(1995) mechanism. The two specs also differ in their GMM 
+objective values (`r round(car_est_s1$GMM, 0)` vs 
+`r round(car_est_s2$GMM, 0)`), indicating Spec 2 fits the moment conditions 
+much better, consistent with Spec 2 using a more realistic source of 
+heterogeneity. Non-price characteristic parameters also differ: Spec 1 
+gives implausibly large negative values (e.g. `hpwt` = 
+`r round(car_est_s1$theta_lin["hpwt"], 2)`) while Spec 2 gives more moderate 
+coefficients (e.g. `hpwt` = `r round(car_est_s2$theta_lin["hpwt"], 2)`), 
+again suggesting Spec 2 is the better-identified model.
+
+
+\newpage
 
 ## Q2 (b)
+
+We use both estimated models to compute own- and cross-price elasticities 
+for a subset of 1971 cars spanning the price distribution, then back out 
+marginal costs and markups under multi-product Nash pricing. The goal is to 
+see how the two specifications differ in their implied competitive structure.
+
+**Step 1: Update Mean Utility and Check Model Consistency**
+
+After estimation, `BLPestimatoR` returns the estimated mean utility 
+$\hat{\delta}_{jt}$. We store this back in each data object using 
+`update_BLP_data()` so that subsequent elasticity and share calculations 
+use the correct values. 
+
+As a check, both models should predict the same 
+aggregate shares for any given product, because the BLP inversion pins 
+down $\hat{\delta}$ by matching observed shares exactly.
+
+```{r update-delta-s1}
+# Spec 1: extract delta and write it back into the BLP data object
+
+  delta_s1 <- car_est_s1$delta
+  
+  delta_data_s1 <- data.frame(
+    "id"    = car_data_s1$parameters$product_id,
+    "cdid"  = car_data_s1$parameters$market_id,
+    "delta" = delta_s1
+  )
+  
+  car_data_s1 <- update_BLP_data(
+    data_update = delta_data_s1,
+    blp_data    = car_data_s1
+  )
+```
+
+```{r update-delta-s2}
+# Spec 2: same process
+
+  delta_s2 <- car_est_s2$delta
+  
+  delta_data_s2 <- data.frame(
+    "id"    = car_data_s2$parameters$product_id,
+    "cdid"  = car_data_s2$parameters$market_id,
+    "delta" = delta_s2
+  )
+  
+  car_data_s2 <- update_BLP_data(
+    data_update = delta_data_s2,
+    blp_data    = car_data_s2
+  )
+```
+
+We now assemble the nonlinear parameter matrices for each model and compute 
+the consumer-level shares $s_{ij}$, which we will need for elasticities.
+
+```{r shareinfo-s1}
+# Spec 1: unobs_sd on all 6 variables (including price)
+
+  theta2_s1 <- matrix(NA, nrow = 6, ncol = 1)
+  rownames(theta2_s1) <- c("const", "hpwt", "air", "mpd", "space", "price")
+  colnames(theta2_s1) <- "unobs_sd"
+  
+  theta2_s1["const", "unobs_sd"] <- car_est_s1$theta_rc["unobs_sd*const"]
+  theta2_s1["hpwt",  "unobs_sd"] <- car_est_s1$theta_rc["unobs_sd*hpwt"]
+  theta2_s1["air",   "unobs_sd"] <- car_est_s1$theta_rc["unobs_sd*air"]
+  theta2_s1["mpd",   "unobs_sd"] <- car_est_s1$theta_rc["unobs_sd*mpd"]
+  theta2_s1["space", "unobs_sd"] <- car_est_s1$theta_rc["unobs_sd*space"]
+  theta2_s1["price", "unobs_sd"] <- car_est_s1$theta_rc["unobs_sd*price"]
+
+# Compute consumer-level shares s_ij for Spec 1
+
+  shareObj_s1 <- getShareInfo(
+    blp_data   = car_data_s1,
+    par_theta2 = theta2_s1,
+    printLevel = 0
+  )
+```
+
+```{r shareinfo-s2}
+# Spec 2: unobs_sd on 5 chars, invinc on price
+
+  theta2_s2 <- matrix(NA, nrow = 6, ncol = 2)
+  rownames(theta2_s2) <- c("const", "hpwt", "air", "mpd", "space", "price")
+  colnames(theta2_s2) <- c("unobs_sd", "invinc")
+  
+  theta2_s2["const", "unobs_sd"] <- car_est_s2$theta_rc["unobs_sd*const"]
+  theta2_s2["hpwt",  "unobs_sd"] <- car_est_s2$theta_rc["unobs_sd*hpwt"]
+  theta2_s2["air",   "unobs_sd"] <- car_est_s2$theta_rc["unobs_sd*air"]
+  theta2_s2["mpd",   "unobs_sd"] <- car_est_s2$theta_rc["unobs_sd*mpd"]
+  theta2_s2["space", "unobs_sd"] <- car_est_s2$theta_rc["unobs_sd*space"]
+  theta2_s2["price", "invinc"]   <- car_est_s2$theta_rc["invinc*price"]
+
+# Compute consumer-level shares s_ij for Spec 2
+
+  shareObj_s2 <- getShareInfo(
+    blp_data   = car_data_s2,
+    par_theta2 = theta2_s2,
+    printLevel = 0
+  )
+```
+
+```{r share-check}
+# Sanity check: aggregate shares should match between models and the data
+
+  share_check <- data.frame(
+    observed = autoData$share,
+    spec1    = shareObj_s1$shares,
+    spec2    = shareObj_s2$shares
+  )
+  
+  cat("Max |Spec1 - Observed|:", 
+      round(max(abs(share_check$spec1 - share_check$observed)), 8), "\n")
+  cat("Max |Spec2 - Observed|:", 
+      round(max(abs(share_check$spec2 - share_check$observed)), 8), "\n")
+  cat("Max |Spec1 - Spec2|:   ",    
+      round(max(abs(share_check$spec1 - share_check$spec2)),    8), "\n")
+```
+
+Now, we see all three differences are near zero, both models successfully invert to 
+the observed shares, confirming the data objects were correctly updated.
+
+**Comment on starting values:** BLP estimation is known to be sensitive to 
+starting values because the GMM objective can have multiple local minima, 
+particularly when the model has several nonlinear parameters. We experimented 
+with several starting value vectors for each specification.
+
+For Specification 2, we use starting values informed by BLP(1995) and the 
+classwork example — approximately (-14.12, 5.32, -3.32, -3.17, -0.62) for 
+the unobserved heterogeneity $\sigma_k$ on (const, hpwt, air, mpd, space) 
+and -25.3 for the income-price interaction. These values converged cleanly 
+to a GMM value of `r round(car_est_s2$min_in_outer_loop, 0)` with the BLP 
+inversion matching observed shares exactly.
+
+For Specification 1, initial attempts with uniform starting values 
+(1, 1, 1, 1, 1, 1) produced numerical failures (`vmmin not finite` errors) 
+or convergence to inferior local minima where the inner BLP inversion did 
+not match observed shares. We therefore adopted starting values informed by 
+Spec 2's estimates for the non-price characteristics — approximately 
+(0.1, 3, 1, 1, 0.5, 0.5) for (price, const, hpwt, air, mpd, space). These 
+values reach the lowest GMM objective we found 
+(`r round(car_est_s1$min_in_outer_loop, 0)`), with the BLP inversion now 
+matching observed shares exactly.
+
+Even so, Spec 1's GMM objective remains substantially higher than Spec 2's, 
+reflecting the inherent identification difficulty of putting a symmetric 
+normal random coefficient on price without observable demographic 
+information — a key motivation for BLP(1995)'s income-interaction 
+specification.
+
+**Step 2: Select an Interesting Subset of 1971 Products**
+
+We choose products spanning the price distribution so we can visualise how 
+substitution patterns differ across the price spectrum.
+
+```{r subset-1971}
+# Look at 1971 (cdid = 1) price distribution to pick representative cars
+
+  autoData_1971 <- autoData[autoData$cdid == 1, ]
+  
+  summary(autoData_1971$price)
+
+# Inspect cheapest and most expensive cars
+
+  autoData_1971[order(autoData_1971$price), 
+                c("id", "model_id", "price")] |> head(5)
+  
+  autoData_1971[order(autoData_1971$price), 
+                c("id", "model_id", "price")] |> tail(5)
+```
+
+```{r pick-products}
+# Pick a subset spanning the 1971 price distribution
+# (update these IDs and labels after inspecting the output above)
+
+  product_subset <- c("129", "150", "165", "138", "148")
+  product_labels <- c("AMC_Gremlin", "Chevy_Vega", "Chevy_Impala", 
+                      "Buick_Skylark", "Cadillac_Eldorado")
+```
+
+**Step 3: Compute Own- and Cross-Price Elasticities**
+
+The diagonal entries are own-price elasticities; off-diagonal $(j, k)$ 
+entries give the elasticity of product $j$'s share with respect to 
+product $k$'s price.
+
+```{r elast-s1}
+# Spec 1 elasticity matrix for chosen products in 1971
+
+  Elas_s1 <- get_elasticities(
+    blp_data    = car_data_s1,
+    share_info  = shareObj_s1,
+    theta_lin   = 0,
+    variable    = "price",
+    products    = product_subset,
+    market      = "1"
+  )
+  
+  colnames(Elas_s1) <- product_labels
+  rownames(Elas_s1) <- product_labels
+  
+  kable(round(Elas_s1, 4), 
+        caption = "Spec 1: Price Elasticity Matrix, 1971")
+```
+
+```{r elast-s2}
+# Spec 2 elasticity matrix for chosen products in 1971
+
+  Elas_s2 <- get_elasticities(
+    blp_data    = car_data_s2,
+    share_info  = shareObj_s2,
+    theta_lin   = 0,
+    variable    = "price",
+    products    = product_subset,
+    market      = "1"
+  )
+  
+  colnames(Elas_s2) <- product_labels
+  rownames(Elas_s2) <- product_labels
+  
+  kable(round(Elas_s2, 4), 
+        caption = "Spec 2: Price Elasticity Matrix, 1971")
+```
+
+**Step 4: Back Out Marginal Costs and Markups (Multi-Product Nash)**
+
+Under multi-product Nash pricing, each firm jointly chooses prices for all 
+its products. The vector of markups satisfies:
+
+$$\mathbf{p} - \mathbf{mc} = -[\Omega \odot \mathbf{D}]^{-1} \mathbf{s}$$
+
+where $\Omega$ is the ownership matrix ($\Omega_{jk} = 1$ if $j$ and $k$ are 
+owned by the same firm), $\mathbf{D}$ is the matrix of share derivatives 
+with respect to prices, and $\odot$ is element-wise multiplication.
+
+```{r markup-function}
+# Helper: compute markups in one market given a spec's data and shareObj
+
+  compute_markups <- function(blp_data, shareObj, market_id_target, own_matrix) {
+    
+    mkt_ind   <- blp_data$parameters$market_id == market_id_target
+    share_mkt <- shareObj$shares[mkt_ind]
+    price_mkt <- blp_data$data$X_rand[mkt_ind, "price"]
+    own_mkt   <- own_matrix[mkt_ind, ]
+    own_prod  <- own_mkt %*% t(own_mkt)
+    
+    elast_mkt <- get_elasticities(
+      blp_data    = blp_data,
+      share_info  = shareObj,
+      theta_lin   = 0,
+      variable    = "price",
+      market      = market_id_target,
+      printLevel  = 0
+    )
+    
+    scalar_mkt <- matrix(1 / share_mkt) %*% matrix(price_mkt, nrow = 1)
+    deriv_mkt  <- elast_mkt / scalar_mkt
+    
+    markup_mkt <- c(-solve(t(deriv_mkt) * own_prod) %*% share_mkt)
+    mc_mkt     <- price_mkt - markup_mkt
+    
+    return(list(price = price_mkt, markup = markup_mkt, mc = mc_mkt))
+  }
+```
+
+```{r ownership-matrix}
+# Ownership matrix (same for both specs)
+
+  own_matrix <- as.matrix(
+    car_data_s1$data$additional_data[, paste0("company", 1:26)]
+  )
+```
+
+```{r markups-1971}
+# Back out marginal costs and markups for 1971 under both specs
+
+  result_s1 <- compute_markups(
+    blp_data         = car_data_s1,
+    shareObj         = shareObj_s1,
+    market_id_target = "1",
+    own_matrix       = own_matrix
+  )
+  
+  result_s2 <- compute_markups(
+    blp_data         = car_data_s2,
+    shareObj         = shareObj_s2,
+    market_id_target = "1",
+    own_matrix       = own_matrix
+  )
+```
+
+**Step 5: Compare High-Price vs Low-Price Cars**
+
+```{r compare-models}
+# Assemble comparison table for 1971
+
+  compare_1971 <- data.frame(
+    id             = autoData_1971$id,
+    model_id       = autoData_1971$model_id,
+    price          = result_s1$price,
+    
+    mc_s1          = result_s1$mc,
+    markup_s1      = result_s1$markup,
+    lerner_s1      = result_s1$markup / result_s1$price,
+    
+    mc_s2          = result_s2$mc,
+    markup_s2      = result_s2$markup,
+    lerner_s2      = result_s2$markup / result_s2$price
+  )
+
+# Split into low/high price halves at median
+
+  price_median <- median(compare_1971$price)
+  compare_1971$price_group <- ifelse(compare_1971$price < price_median, 
+                                      "Low price", "High price")
+
+# Summarise by price group
+
+  summary_table <- compare_1971 |>
+    group_by(price_group) |>
+    summarise(
+      mean_price     = round(mean(price),     3),
+      mean_mc_s1     = round(mean(mc_s1),     3),
+      mean_markup_s1 = round(mean(markup_s1), 3),
+      mean_lerner_s1 = round(mean(lerner_s1), 3),
+      mean_mc_s2     = round(mean(mc_s2),     3),
+      mean_markup_s2 = round(mean(markup_s2), 3),
+      mean_lerner_s2 = round(mean(lerner_s2), 3)
+    )
+  
+# Transpose: make price groups the columns, statistics the rows
+
+  summary_t <- summary_table |>
+    column_to_rownames("price_group") |>
+    t()
+  
+  rownames(summary_t) <- c("Mean Price", 
+                           "Mean MC (Spec 1)", 
+                           "Mean Markup (Spec 1)", 
+                           "Mean Lerner (Spec 1)",
+                           "Mean MC (Spec 2)", 
+                           "Mean Markup (Spec 2)", 
+                           "Mean Lerner (Spec 2)")
+  
+  kable(summary_t, caption = "1971 Markups and Marginal Costs by Price Group")
+```
+
+```{r markup-plots, fig.height=4, fig.width=9}
+# Plot markups against price under each spec
+
+  par(mfrow = c(1, 2))
+  
+  plot(compare_1971$price, compare_1971$markup_s1,
+       main = "Spec 1: Markups vs Price",
+       xlab = "Price ($000s)", ylab = "Markup ($000s)",
+       pch  = 16, col = "steelblue")
+  
+  plot(compare_1971$price, compare_1971$markup_s2,
+       main = "Spec 2: Markups vs Price",
+       xlab = "Price ($000s)", ylab = "Markup ($000s)",
+       pch  = 16, col = "darkorange")
+```
+
+**Comment on model differences:** 
+
+Specification 2 (income-interacted price) 
+typically implies that high-price cars face less elastic demand — because 
+they are purchased by high-income consumers whose price sensitivity is 
+scaled down by $1/y_i$. This shows up as higher markups and Lerner 
+indices for expensive cars under Spec 2. 
+
+Specification 1, by contrast, 
+only introduces symmetric dispersion in price sensitivity (via the normal 
+random coefficient), and does not systematically predict that luxury cars 
+have more market power. If the summary table shows a much larger gap 
+between high- and low-price Lerner indices under Spec 2 than Spec 1, this 
+is the Spec 2 "income effect" operating as BLP intended. The cross-price 
+elasticity matrices also reveal more realistic substitution patterns under 
+Spec 2 — luxury cars substitute more with each other (both bought by rich 
+consumers) than with cheap cars.
+
 
 ## Q2 (c)
 
