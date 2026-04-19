@@ -11,3 +11,5 @@ lubridate
 ivreg
 modelsummary
 knitr
+BLPestimatoR
+nleqslv

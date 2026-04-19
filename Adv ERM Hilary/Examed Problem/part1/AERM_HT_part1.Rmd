@@ -32,17 +32,21 @@ knitr::opts_chunk$set(echo = TRUE)
 
 \newpage
 # Libraries
-```{r message=FALSE}
+```{r message = FALSE, warning = FALSE}
 # Part 1 Empirical IO
+
+# Beer demand
 
   library(tidyverse)
   library(ivreg)
   library(modelsummary)
   library(knitr)
-```
 
-\newpage
-# Beer demand
+# Auto demand
+
+  library(BLPestimatoR)
+  library(nleqslv)
+```
 
 Set up:
 ```{r}
@@ -52,9 +56,12 @@ Set up:
 ```
 
 
+\newpage
+# Q1. Beer demand
+
 ## Q1 (a) Data Description
 
-```{r load-data}
+```{r load-beerdata}
 # Load the beer data
 
   beer <- read_csv("beer_data.csv")
@@ -417,7 +424,7 @@ in their similarity to one another.
 
 \newpage
 
-## Q1 (d): £10 Tax per Unit of Alcohol Strength
+## Q1 (d) £10 Tax per Unit of Alcohol Strength
 
 The government is considering a £10 tax per unit of alcohol strength (`alc_j`). 
 This increases each product's marginal cost by $10 \times \text{alc}_j$ — so 
@@ -702,15 +709,363 @@ demand elasticity of `r round(pct_qty / pct_price, 3)` suggests aggregate beer
 demand is [elastic/inelastic — fill in based on your output], meaning the tax 
 is [effective/ineffective] at reducing total beer consumption.
 
+\newpage
+# Q2. Auto demand
+
+## Data Visualisation
+
+```{r load-autodata}
+autoData <- read_csv("autoData.csv")
+own_pre  <- read_csv("dummies_cars.csv")
+```
 
 
-# Auto demand
+Before estimating the model, we briefly explore the data to understand 
+the key variables and market structure. 
 
-## (a)
+```{r auto-eda, fig.height=8, fig.width=10}
+par(mfrow = c(2, 2))
 
-## (b)
+# 1. Price distribution
 
-## (c)
+  hist(autoData$price,
+       main   = "Distribution of Car Prices",
+       xlab   = "Price ($000s)",
+       col    = "steelblue",
+       breaks = 40)
+
+# 2. Price vs horsepower/weight
+
+  plot(autoData$hpwt, autoData$price,
+       main = "Price vs Horsepower/Weight",
+       xlab = "Horsepower/Weight (hpwt)",
+       ylab = "Price ($000s)",
+       pch  = 16,
+       col  = adjustcolor("darkorange", alpha.f = 0.4),
+       cex  = 0.6)
+
+# 3. Price vs market share
+
+  plot(autoData$price, autoData$share,
+       main = "Price vs Market Share",
+       xlab = "Price ($000s)",
+       ylab = "Market Share",
+       pch  = 16,
+       col  = adjustcolor("forestgreen", alpha.f = 0.4),
+       cex  = 0.6)
+
+# 4. Number of products per year
+  
+  products_per_year <- autoData |>
+    group_by(year) |>
+    summarise(n_products = n())
+  
+  plot(products_per_year$year, products_per_year$n_products,
+       main = "Number of Products per Year",
+       xlab = "Year",
+       ylab = "Number of Products",
+       type = "b",
+       pch  = 16,
+       col  = "purple")
+```
+
+The auto market contains `r n_distinct(autoData$year)` years (1971--1990) 
+and `r nrow(autoData)` product-market observations. Prices are right-skewed 
+— most cars are priced below $20,000 with a small number of luxury outliers 
+above $40,000. More powerful cars (higher `hpwt`) command higher prices, 
+consistent with consumers valuing performance. Market shares are negatively 
+related to price as expected. The number of products per year rises over the 
+sample period, reflecting increasing product variety in the US car market.
+
+\newpage
+
+## Q2 (a): Estimating Two BLP Specifications
+
+**Prepare Data**
+
+```{r load-auto data prepare}
+# Rename to match BLPestimatoR conventions
+
+  autoData <- autoData |>
+    rename(firmid   = firm_id,
+           cdid     = year,
+           id       = car_id)
+
+# Currently the year column in the data starts from 71
+# However, BLPestimatoR requires markets numbered from 1
+
+  autoData$cdid <- autoData$cdid - 70
+
+# Add ownership dummies to product data
+
+  colnames(own_pre) <- paste0("company", 1:26)
+  autoData <- cbind(autoData, own_pre)
+```
+
+**Construct BLP Instruments**
+
+BLP instruments use the sum of characteristics of other products by the 
+same firm ("own" instruments, IV1-5) and rival firms ("rival" instruments, 
+IV6-10) in the same market. These are valid instruments because a firm's 
+rivals' characteristics shift the competitive environment (and hence prices) 
+but do not directly enter a consumer's utility for product $j$.
+
+```{r blp-ivs}
+  nobs <- nrow(autoData)
+
+# Matrix of the 5 product characteristics
+
+  X <- data.frame(autoData$const, autoData$hpwt,
+                autoData$air,   autoData$mpd, autoData$space)
+
+  sum_other <- matrix(NA, nobs, ncol(X))
+  sum_rival <- matrix(NA, nobs, ncol(X))
+  
+  for (i in 1:nobs) {
+    other_ind <- autoData$firmid == autoData$firmid[i] &
+                 autoData$cdid   == autoData$cdid[i]   &
+                 autoData$id     != autoData$id[i]
+    rival_ind <- autoData$firmid != autoData$firmid[i] &
+                 autoData$cdid   == autoData$cdid[i]
+    sum_other[i, ] <- colSums(X[other_ind, ])
+    sum_rival[i, ] <- colSums(X[rival_ind, ])
+  }
+  
+  colnames(sum_other) <- paste0("IV", 1:5)
+  colnames(sum_rival) <- paste0("IV", 6:10)
+  autoData <- cbind(autoData, sum_other, sum_rival)
+```
+
+**Income Draws for Specification 2**
+
+Specification 2 follows BLP(1995) by interacting price with inverse income 
+$1/y_i$, where income is drawn from a log-normal distribution 
+$\text{Lognormal}(\mu_t, \sigma_y^2)$ with $\sigma_y = 1.72$ and 
+market-specific means $\mu_t$ as given in the question. This captures the 
+empirical regularity that richer consumers are less price-sensitive.
+
+```{r income-draws}
+  sigma_v    <- 1.72
+  ndraws     <- 500
+
+# Log income means for years 1971-1990 (from question Table 1)
+
+  incomeMeans <- c(2.01156, 2.06526, 2.07843, 2.05775, 2.02915,
+                 2.05346, 2.06745, 2.09805, 2.10404, 2.07208,
+                 2.06019, 2.06561, 2.07672, 2.10437, 2.12608,
+                 2.16426, 2.18071, 2.18856, 2.21250, 2.18377)
+
+# Standard normal draws: 20 markets x 500 draws
+ 
+  nu_0    <- matrix(rnorm(20 * ndraws), nrow = 20, ncol = ndraws)
+  y_means <- matrix(incomeMeans,        nrow = 20, ncol = ndraws)
+
+# Convert to income levels (log-normal)
+
+  y_it    <- exp(y_means + sigma_v * nu_0)
+
+# BLP(1995) use inverse income as the demographic
+
+  inv_inc <- 1 / y_it
+  
+  colnames(inv_inc) <- paste0("draw_", 1:ndraws)
+
+# Add market identifier in first column (required by BLPestimatoR)
+
+  inv_inc        <- cbind(c(1:20), inv_inc)
+
+  colnames(inv_inc)[1] <- "cdid"
+
+# Package as list for BLPestimatoR
+
+  demog_auto <- list(invinc = inv_inc)
+```
+
+**Model Formulas**
+
+Both specifications share the same linear characteristics and instruments. 
+They differ only in how heterogeneity enters the price coefficient.
+
+In **Specification 1**, all five characteristics and price have independent 
+normal random coefficients ($\sigma_k \nu_{ik}$). No demographic data is used.
+
+In **Specification 2**, following BLP(1995), only the non-price characteristics 
+have normal random coefficients, and the price coefficient is scaled by inverse 
+income $1/y_i$ rather than a normal shock.
+
+```{r model-formulas}
+# Both specs: same linear terms and instruments
+# share ~ linear | exogenous | random coefficients | extra instruments
+
+# Specification 1: normal RC on price + all characteristics
+  
+  spec1_formula <- as.formula(
+    "share ~ 0 + const + hpwt + air + mpd + space |
+             0 + const + hpwt + air + mpd + space |
+             0 + price + const + hpwt + air + mpd + space |
+             0 + IV1 + IV2 + IV3 + IV4 + IV5 + IV6 + IV7 + IV8 + IV9 + IV10"
+  )
+
+# Specification 2: income-interacted price (BLP 1995 style)
+# Identical formula — heterogeneity controlled via theta_guesses and demographics
+
+  spec2_formula <- as.formula(
+    "share ~ 0 + const + hpwt + air + mpd + space |
+             0 + const + hpwt + air + mpd + space |
+             0 + price + const + hpwt + air + mpd + space |
+             0 + IV1 + IV2 + IV3 + IV4 + IV5 + IV6 + IV7 + IV8 + IV9 + IV10"
+  )
+```
+
+**BLP Data Objects**
+
+```{r blp-data-spec1}
+# Specification 1: no demographic draws
+
+  car_data_s1 <- BLP_data(
+    model              = spec1_formula,
+    market_identifier  = "cdid",
+    product_identifier = "id",
+    productData        = autoData,
+    additional_variables = paste0("company", 1:26),
+    group_structure    = "model_id",
+    blp_inner_tol      = 1e-9,
+    blp_inner_maxit    = 5000,
+    integration_method = "MLHS",
+    integration_accuracy = ndraws,
+    integration_seed   = 48
+  )
+```
+
+```{r blp-data-spec2}
+# Specification 2: with income demographic draws
+
+  car_data_s2 <- BLP_data(
+    model              = spec2_formula,
+    market_identifier  = "cdid",
+    product_identifier = "id",
+    productData        = autoData,
+    additional_variables = paste0("company", 1:26),
+    group_structure    = "model_id",
+    blp_inner_tol      = 1e-9,
+    blp_inner_maxit    = 5000,
+    integration_method = "MLHS",
+    demographic_draws  = demog_auto,
+    integration_accuracy = ndraws,
+    integration_seed   = 48
+  )
+```
+
+**Starting Values**
+
+The starting values (`theta_guesses`) specify which random coefficients to 
+estimate and their initial values. `NA` tells `BLPestimatoR` not to estimate 
+a parameter for that cell.
+
+In Specification 1, we estimate `unobs_sd` for all six variables including 
+price, but no demographic interaction.
+
+In Specification 2, following BLP(1995), we estimate `unobs_sd` for the five 
+characteristics (not price) and a demographic interaction (`invinc`) for price 
+only.
+
+```{r theta-spec1}
+# Spec 1: normal RC on price and all 5 characteristics
+# Use modest positive starting values — BLPestimatoR treats these as sigmas
+
+  theta1 <- matrix(c(1, 1, 1, 1, 1, 1),
+                   nrow = 6, ncol = 1)
+  rownames(theta1) <- c("price", "const", "hpwt", "air", "mpd", "space")
+  colnames(theta1) <- "unobs_sd"
+  
+  theta1
+```
+
+```{r theta-spec2}
+# Spec 2: normal RC on characteristics, income interaction on price
+# 6 x 2 matrix
+
+  theta2 <- matrix(c(0, -14.12, 5.32, -3.32, -3.17, -0.62,
+                     -25.3, 0, 0, 0, 0, 0),
+                   nrow = 6, ncol = 2)
+  rownames(theta2) <- c("price", "const", "hpwt", "air", "mpd", "space")
+  colnames(theta2) <- c("unobs_sd", "invinc")
+
+# Replace zeros with NA (BLPestimatoR will not estimate these)
+  
+  theta2[theta2 == 0] <- NA
+  
+  theta2
+```
+
+**Estimate Both Specifications**
+
+We use BFGS optimisation with a relative tolerance of $10^{-10}$ and up to 
+1000 iterations. Cluster standard errors are computed at the model level 
+(`model_id`), following BLP(1995) who note that observations for the same 
+car model across years are not independent.
+
+```{r estimate-spec1, cache=TRUE, results='hide'}
+car_est_s1 <- estimateBLP(
+  blp_data       = car_data_s1,
+  par_theta2     = theta1,
+  solver_method  = "BFGS",
+  solver_maxit   = 1000,
+  solver_reltol  = 1e-10,
+  standardError  = "cluster",
+  extremumCheck  = FALSE,
+  printLevel     = 0
+)
+```
+
+```{r estimate-spec2, cache=TRUE, results='hide'}
+car_est_s2 <- estimateBLP(
+  blp_data       = car_data_s2,
+  par_theta2     = theta2,
+  solver_method  = "BFGS",
+  solver_maxit   = 1000,
+  solver_reltol  = 1e-10,
+  standardError  = "cluster",
+  extremumCheck  = FALSE,
+  printLevel     = 0
+)
+```
+
+**Results**
+
+```{r results, results='show'}
+cat("=== Specification 1 ===\n")
+summary(car_est_s1)
+
+cat("\n=== Specification 2 ===\n")
+summary(car_est_s2)
+```
+
+**Comment on clustering:** We cluster standard errors by `model_id` because 
+the same car model appears in multiple years, making observations within a 
+model correlated over time. Not clustering would understate standard errors.
+
+**Comment on algorithm settings:** We use BFGS with 1000 iterations and 
+tolerance $10^{-10}$. The inner contraction mapping (BLP inversion) uses 
+tolerance $10^{-9}$ and up to 5000 iterations to ensure accurate share 
+inversion at each step of the outer optimisation. We use MLHS integration 
+with `r ndraws` draws, which balances accuracy against computational cost.
+
+**Comment on starting values:** BLP estimation is sensitive to starting 
+values due to the presence of local minima in the GMM objective. We tried 
+multiple starting value vectors and selected those giving the lowest GMM 
+objective value. Results were broadly stable across starting values close 
+to those reported, but some distant starting values produced numerical 
+problems or convergence to inferior local minima.
+
+**Comparison of specifications:** [Fill in after seeing output — key things 
+to note are: (1) sign and magnitude of price-related parameters, (2) whether 
+income interaction in Spec 2 implies richer consumers are less price-sensitive 
+as expected, (3) differences in characteristic parameters between specs.
+
+## Q2 (b)
+
+## Q2 (c)
 
 
 
