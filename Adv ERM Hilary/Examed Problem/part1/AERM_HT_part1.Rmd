@@ -1,6 +1,6 @@
 ---
-title: "AERM_HT_part1"
-author: '1091806'
+title: "Advanced Empirical Research Methods Hilary 2025/26"
+author: 'Candidate ID: 1091806'
 date: "2026-04-13"
 output:
   pdf_document:
@@ -8,38 +8,712 @@ output:
     latex_engine: xelatex
     toc_depth: 2
     number_sections: false
+  html_document:
+    toc: true
+    toc_depth: '2'
+    df_print: paged
+subtitle: 'Assessed Problem Set: Empirical IO'
 fontsize: 11pt
 geometry: margin=1in
 header-includes:
-  - \usepackage{float}
-  - \usepackage{booktabs}
-  - \usepackage{longtable}
-  - \usepackage{amsmath}
-  - \usepackage{newunicodechar}
-  - \newunicodechar{ρ}{$\rho$}
-  - \newunicodechar{π}{$\pi$}
+- \usepackage{float}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{amsmath}
+- \usepackage{newunicodechar}
+- \newunicodechar{ρ}{$\rho$}
+- \newunicodechar{π}{$\pi$}
+- \newunicodechar{ξ}{$\xi$}
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+\newpage
+# Libraries
+```{r message=FALSE}
+# Part 1 Empirical IO
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+  library(tidyverse)
+  library(ivreg)
+  library(modelsummary)
+  library(knitr)
 ```
 
-## Including Plots
+\newpage
+# Beer demand
 
-You can also embed plots, for example:
+Set up:
+```{r}
+# Set seed to 130
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+  set.seed(130)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Q1 (a) Data Description
+
+```{r load-data}
+# Load the beer data
+
+  beer <- read_csv("beer_data.csv")
+
+# Preview structure
+  
+  glimpse(beer)
+```
+
+```{r summary-stats}
+# Summary statistics for key variables
+
+  beer %>%
+    select(price, quantity, marginal_cost, alc_j, marketsize, num_prod_mkt) %>%
+    summary()
+```
+
+```{r distributions, fig.height=4, fig.width=8}
+# Visualise distributions of price and alcohol content
+
+  par(mfrow = c(1, 3))
+  
+  hist(beer$price,        main = "Price (£)",         xlab = "£",   col = "red")
+  hist(beer$alc_j,        main = "Alcohol Content",   xlab = "alc", col = "orange")
+  hist(beer$marginal_cost,main = "Marginal Cost (£)", xlab = "£",   col = "yellow")
+```
+
+```{r market-structure}
+# Number of markets and products per market
+cat("Number of unique markets:  ", n_distinct(beer$market_id), "\n")
+cat("Number of unique products: ", n_distinct(beer$product_id), "\n")
+
+# Distribution of products per market
+
+beer %>%
+  group_by(market_id) %>%
+  summarise(n_products = n()) %>%
+  summary()
+```
+
+**Comment:** 
+
+The data contains `r n_distinct(beer$market_id)` markets and 
+`r nrow(beer)` product-market observations, with between `r min(beer$num_prod_mkt)` 
+and `r max(beer$num_prod_mkt)` products per market (mean `r round(mean(beer$num_prod_mkt), 1)`). 
+Prices range from £`r round(min(beer$price), 2)` to £`r round(max(beer$price), 2)` 
+with a mean of £`r round(mean(beer$price), 2)`, and are right-skewed — most beers 
+are cheap with a few expensive outliers. Marginal costs range from 
+£`r round(min(beer$marginal_cost), 2)` to £`r round(max(beer$marginal_cost), 2)`, 
+always below price, consistent with positive markups. Alcohol content (`alc_j`) 
+is uniformly distributed between `r round(min(beer$alc_j), 2)` and 
+`r round(max(beer$alc_j), 2)`, suggesting products are evenly spread across the 
+strength spectrum. Market sizes range from `r round(min(beer$marketsize), 0)` to 
+`r round(max(beer$marketsize), 0)` potential purchase occasions.
+
+\newpage
+
+## Q1 (b) Nested Logit Estimation
+
+**Step 1: Compute Market Shares**
+
+```{r market-shares}
+beer <- beer |> 
+  group_by(market_id) |> 
+  mutate(
+    
+    # Market share of product j in market t
+    share_jt  = quantity / marketsize,
+    
+    # Aggregate share of all inside goods (all beers) in market t
+    share_agg = sum(share_jt),
+    
+    # Outside good share: fraction who don't buy any beer
+    share_0   = 1 - share_agg,
+    
+    # Within-group share: j's share among beer buyers
+    # Since all inside goods are in one nest: s_{j|g} = s_jt / (1 - s_0t)
+    share_jg  = share_jt / share_agg
+    
+  ) |> 
+  ungroup()
+
+# Sanity checks
+cat("Min outside good share: ", round(min(beer$share_0), 4), "\n")
+cat("Max outside good share: ", round(max(beer$share_0), 4), "\n")
+cat("All shares positive:    ", all(beer$share_jt > 0), "\n")
+```
+
+**Step 2: Construct the Dependent Variable and Regressors**
+
+```{r dependent-var, results='hide'}
+beer <- beer |> 
+  mutate(
+    
+    # Nested logit dependent variable: ln(s_jt) - ln(s_0t)
+    delta     = log(share_jt) - log(share_0),
+    
+    # Within-group share term that appears on RHS
+    ln_share_jg = log(share_jg)
+  )
+
+summary(beer$delta)
+```
+
+| Statistic | Value |
+|-----------|-------|
+| Min       | `r round(min(beer$delta), 3)` |
+| 1st Qu.   | `r round(quantile(beer$delta, 0.25), 3)` |
+| Median    | `r round(median(beer$delta), 3)` |
+| Mean      | `r round(mean(beer$delta), 3)` |
+| 3rd Qu.   | `r round(quantile(beer$delta, 0.75), 3)` |
+| Max       | `r round(max(beer$delta), 3)` |
+
+**Step 3: Estimate the Nested Logit Model**
+
+The estimating equation is:
+
+$$\ln(s_{jt}) - \ln(s_{0t}) = \beta_0 + \beta_{\text{alc}} \cdot \text{alc}_j 
+- \alpha \cdot p_{jt} + \sigma \cdot \ln(s_{j|g,t}) + \xi_{jt}$$
+
+Both `price` and `ln_share_jg` are **endogenous**:
+
+- **Price** is endogenous because firms observe $\xi_{jt}$ before setting prices — 
+beers with high unobserved quality command higher prices, creating a positive correlation between `price` and $\xi_{jt}$. OLS would therefore underestimate price sensitivity.
+
+- **Within-group share** $\ln(s_{j|g,t})$ is endogenous because it depends on all prices in the market, which all depend on the $\xi$'s. If product $j$ has high $\xi_{jt}$, consumers substitute towards it, inflating its within-group share. OLS would therefore overestimate $\hat{\sigma}$.
+
+So we need instruments:
+
+- `marginal_cost` for `price` (cost shifter, excluded from demand)
+- `num_prod_mkt` for `ln_share_jg` (more products dilutes within-group share 
+  but does not enter consumer utility directly)
+
+```{r nested-logit-iv}
+# OLS (for comparison — biased due to endogeneity)
+
+  model_ols <- lm(delta ~ alc_j + price + ln_share_jg, data = beer)
+
+# IV / 2SLS: instrument price with marginal_cost,
+#            instrument ln_share_jg with num_prod_mkt
+
+  model_iv <- ivreg(
+    delta ~ alc_j + price + ln_share_jg |
+            alc_j + marginal_cost + num_prod_mkt,
+    data = beer
+  )
+```
+
+```{r results-table}
+# Compare OLS and IV results
+
+modelsummary(
+  list("OLS" = model_ols, "IV (2SLS)" = model_iv),
+  stars  = TRUE,
+  gof_omit = "AIC|BIC|Log|F",
+  title  = "Nested Logit Estimates"
+)
+```
+
+```{r first-stage, results='hide'}
+# Check first-stage relevance: instruments must be correlated with endogenous vars
+
+# First stage for price
+
+  fs_price <- lm(price ~ alc_j + marginal_cost + num_prod_mkt, data = beer)
+
+# First stage for ln_share_jg
+
+  fs_share <- lm(ln_share_jg ~ alc_j + marginal_cost + num_prod_mkt, data = beer)
+```
+
+```{r first-stage-output}
+cat("=== First Stage: Price ===\n")
+summary(fs_price)$coefficients
+
+cat("\n=== First Stage: ln(within-group share) ===\n")
+summary(fs_share)$coefficients
+```
+
+**Identification assumptions:** The validity of the IV estimates rests on two conditions. 
+
+First, *relevance*: marginal costs must be correlated with prices (satisfied if firms pass costs through to prices) and the number of products  must be correlated with within-group shares (satisfied mechanically — moreproducts dilutes each product's share of the nest). 
+
+Second, *exclusion*: marginal costs must not directly affect consumer utility (reasonable — consumers care about price, not cost), and the number of products in the market must not directly shift a consumer's valuation of any individual beer (reasonable under the nested logit structure). The residuals $\xi_{jt}$ are our estimate of unobserved product quality — product attributes that consumers value but that we do not observe in the data.
+
+**Step 4: Extract Residuals as Unobserved Utility**
+
+```{r xi-vector}
+# Vector ξ
+
+# Residuals from IV regression are our estimate of xi_{jt}
+# These capture unobserved product quality not explained by alc_j or price
+beer$xi <- residuals(model_iv)
+
+summary(beer$xi)
+
+hist(beer$xi, 
+     main = "Distribution of Unobserved Utility (xi)",
+     xlab = expression(xi),
+     col  = "steelblue",
+     breaks = 30)
+```
+
+**Comment on estimates:** The IV price coefficient ($\hat{\alpha}$) is 
+`r round(coef(model_iv)["price"], 3)`, which is negative as expected — higher 
+prices reduce demand. The nesting parameter $\hat{\sigma}$ on `ln_share_jg` is 
+`r round(coef(model_iv)["ln_share_jg"], 3)`, which lies in (0,1), consistent 
+with the nested logit model. Comparing OLS and IV, the OLS price coefficient is 
+less negative (attenuated towards zero) because firms charge more for products 
+with high unobserved quality, creating upward bias. The instruments correct for 
+this. The coefficient on alcohol content is positive, indicating consumers 
+prefer stronger beers, all else equal.
+
+\newpage
+
+## Q1 (c) Elasticities, Marginal Costs and Diversion Ratios
+
+**Step 1: Extract Parameters and Compute Own-Price Elasticities**
+
+We extract the estimated price parameter $\hat{\alpha}$ and nesting parameter 
+$\hat{\sigma}$ from the IV model estimated in part (b). Note we flip the sign 
+on the price coefficient so that $\alpha$ is positive, matching the notation 
+in the elasticity and markup formulas.
+
+```{r parameters}
+# Extract estimated parameters from IV model
+
+alpha <- -coef(model_iv)["price"]          # price parameter (positive)
+sigma <- coef(model_iv)["ln_share_jg"]     # nesting parameter
+
+cat("alpha:", round(alpha, 4), "\n")
+cat("sigma:", round(sigma, 4), "\n")
+```
+
+With $\hat{\alpha}$ and $\hat{\sigma}$ in hand, we can compute own-price 
+elasticities for each product-market observation using the nested logit formula:
+
+$$\eta_{jj} = -\alpha \cdot p_{jt} \cdot 
+\frac{1 - \sigma s_{j|g,t} - (1-\sigma)s_{jt}}{1-\sigma}$$
+
+The term in the numerator reflects that a price rise loses customers to two 
+destinations — other beers (weighted by $\sigma$) and the outside good 
+(weighted by $1-\sigma$).
+
+```{r elasticities}
+# Own-price elasticity for nested logit (single nest):
+# eta_jj = -alpha * p_jt * (1 - sigma*s_{j|g} - (1-sigma)*s_j) / (1 - sigma)
+
+beer <- beer |>
+  mutate(
+    elast_own = -alpha * price * 
+      (1 - sigma * share_jg - (1 - sigma) * share_jt) / (1 - sigma)
+  )
+```
+
+*Summary table*
+
+| Statistic | Value |
+|-----------|-------|
+| Min       | `r round(min(beer$elast_own), 3)` |
+| 1st Qu.   | `r round(quantile(beer$elast_own, 0.25), 3)` |
+| Median    | `r round(median(beer$elast_own), 3)` |
+| Mean      | `r round(mean(beer$elast_own), 3)` |
+| 3rd Qu.   | `r round(quantile(beer$elast_own, 0.75), 3)` |
+| Max       | `r round(max(beer$elast_own), 3)` |
+
+
+To visualise the distribution and check how many products fall in the inelastic 
+region ($|\eta| < 1$), we plot a histogram with a reference line at $-1$.
+
+```{r elast-plot, fig.height=3.5, fig.width=6}
+hist(beer$elast_own,
+     main = "Distribution of Own-Price Elasticities",
+     xlab = "Own-Price Elasticity",
+     col  = "steelblue",
+     breaks = 40)
+abline(v = -1, col = "red", lty = 2, lwd = 2)
+legend("topleft", legend = "Elasticity = -1", col = "red", lty = 2)
+```
+
+**Step 2: Back Out Marginal Costs**
+
+Under single-product Nash, the markup is:
+
+$$\text{markup}_{jt} = p_{jt} - mc_{jt} =  \frac{1 - \sigma}{\alpha(1 - \sigma s_{j|g,t} - (1-\sigma)s_{jt})}$$
+
+```{r marginal-costs}
+beer <- beer |>
+  mutate(
+    markup_implied = (1 - sigma) / 
+      (alpha * (1 - sigma * share_jg - (1 - sigma) * share_jt)),
+    mc_implied = price - markup_implied
+  )
+```
+
+*Summary of backed-out marginal costs*
+
+| Statistic | Marginal Cost | Markup |
+|-----------|--------------|--------|
+| Min       | `r round(min(beer$mc_implied), 3)` | `r round(min(beer$markup_implied), 3)` |
+| Median    | `r round(median(beer$mc_implied), 3)` | `r round(median(beer$markup_implied), 3)` |
+| Mean      | `r round(mean(beer$mc_implied), 3)` | `r round(mean(beer$markup_implied), 3)` |
+| Max       | `r round(max(beer$mc_implied), 3)` | `r round(max(beer$markup_implied), 3)` |
+
+As a sanity check, we compare our backed-out marginal costs with the ones 
+provided in the data. They should be strongly correlated if both the demand 
+model and the single-product Nash assumption are reasonable approximations.
+
+```{r mc-check}
+# Check: compare backed-out mc with mc in data
+
+cat("Correlation between backed-out and data mc:",
+    round(cor(beer$mc_implied, beer$marginal_cost), 4), "\n")
+
+plot(beer$marginal_cost, beer$mc_implied,
+     main = "Backed-out vs Data Marginal Costs",
+     xlab = "MC from data", ylab = "MC backed out",
+     pch  = 16, col = adjustcolor("steelblue", alpha.f = 0.3),
+     cex  = 0.5)
+abline(0, 1, col = "red", lwd = 2)
+```
+
+**Step 3: Diversion Ratio to Outside Good**
+
+The diversion ratio to the outside good tells us what fraction of lost customers 
+leave the beer market entirely when a product's price rises marginally, shown as below:
+
+$$DR_{j \to 0} = \frac{(1-\sigma) \cdot s_{0t}}{1 - \sigma s_{j|g,t} - (1-\sigma)s_{jt}}$$
+
+Comparing this to the raw outside good share illustrates the role of $\sigma$: in a simple 
+logit ($\sigma = 0$), these would be equal; with $\sigma > 0$, the diversion 
+ratio is lower because consumers prefer to stay within the nest.
+
+```{r diversion}
+beer <- beer |>
+  mutate(
+    diversion_outside = (1 - sigma) * share_0 /
+      (1 - sigma * share_jg - (1 - sigma) * share_jt)
+  )
+```
+
+*Compare diversion ratio to outside good share directly*
+
+| Statistic | Diversion Ratio to Outside | Outside Good Share |
+|-----------|---------------------------|-------------------|
+| Mean      | `r round(mean(beer$diversion_outside), 3)` | `r round(mean(beer$share_0), 3)` |
+| Median    | `r round(median(beer$diversion_outside), 3)` | `r round(median(beer$share_0), 3)` |
+
+**Comment:** Own-price elasticities are all negative and mostly elastic (below -1), 
+as expected for individual beer products. Backed-out marginal costs are positive 
+and broadly consistent with those in the data. The diversion ratio to the outside 
+good (`r round(mean(beer$diversion_outside), 3)`) is lower than the outside good 
+share (`r round(mean(beer$share_0), 3)`), reflecting that when a beer's price rises, 
+consumers tend to substitute towards other beers rather than exit the market — 
+consistent with $\hat{\sigma} =$ `r round(sigma, 3)` > 0. This highlights a key 
+flexibility limitation: the nested logit forces all within-nest cross-price 
+elasticities to be identical, which may be unrealistic if beers differ substantially 
+in their similarity to one another.
+
+
+\newpage
+
+## Q1 (d): £10 Tax per Unit of Alcohol Strength
+
+The government is considering a £10 tax per unit of alcohol strength (`alc_j`). 
+This increases each product's marginal cost by $10 \times \text{alc}_j$ — so 
+stronger beers face a larger cost shock. We use our backed-out marginal costs 
+from part (c) as the pre-tax baseline, rather than the marginal costs given in 
+the data, to ensure internal consistency with the demand model.
+
+**Step 1: Compute New Marginal Costs After Tax**
+
+We first construct the post-tax marginal cost for each product.
+
+```{r tax-mc}
+tax_rate <- 10
+
+beer <- beer |>
+  mutate(
+    # Tax increases mc by 10 * alc_j for each product
+    mc_tax = mc_implied + tax_rate * alc_j,
+    delta_mc = mc_tax - mc_implied
+  )
+
+cat("Mean marginal cost increase (delta_mc):", 
+    round(mean(beer$delta_mc), 4), "\n")
+```
+
+**Step 2: Define Share Function for Contraction Mapping**
+
+To solve for counterfactual equilibrium prices, we need a function that computes 
+nested logit market shares given a price vector. The share formulas follow 
+directly from the nested logit model: within-nest shares are softmax over 
+$\delta_j / (1-\sigma)$, and the nest share depends on the log-sum-exponential 
+raised to $(1-\sigma)$.
+
+
+```{r share-function}
+# Function to compute nested logit shares given prices in a single market
+
+compute_shares <- function(price_t, delta_base_t, sigma) {
+  
+  # delta_base_t = beta0 + beta_alc*alc_j + xi_jt (no price term)
+  # Full mean utility including price:
+  
+    delta_t <- delta_base_t - alpha * price_t   # using alpha from model_iv
+  
+  # Within-nest shares
+    
+    exp_d  <- exp(delta_t / (1 - sigma))
+    sum_eg <- sum(exp_d)
+    
+    sj_g <- exp_d / sum_eg
+  
+  # Group share
+    
+    sg <- sum_eg^(1 - sigma) / (1 + sum_eg^(1 - sigma))
+  
+  # Product shares
+  
+    sj <- sj_g * sg
+  
+  return(list(sj = sj, sj_g = sj_g, s0 = 1 - sum(sj)))
+}
+```
+
+**Step 3: Contraction Mapping to Solve for Counterfactual Prices**
+
+The counterfactual equilibrium cannot be solved analytically because prices and 
+shares are jointly determined: each firm's price depends on shares, which depend 
+on all prices in the market. We therefore use a contraction mapping. Starting 
+from observed prices, we iteratively apply the Nash pricing rule 
+$p = mc^{\text{tax}} + \text{markup}(s(p))$ until prices converge (tolerance 
+$10^{-10}$). 
+
+A key subtlety: we need the "base utility" 
+
+$\delta^{\text{base}}_{jt} = \beta_0 + \beta_{\text{alc}} \text{alc}_j + \xi_{jt}$ 
+
+that excludes the price term, which we recover from the estimated $\delta_{jt}$ 
+by adding back $\alpha p_{jt}$ and subtracting the $\sigma \ln(s_{j|g,t})$ term.
+
+```{r contraction}
+# We solve market by market
+# For each market: iterate p = mc_tax + markup(shares(p)) until convergence
+
+solve_prices <- function(beer_mkt, mc_col, sigma, alpha, 
+                          tol = 1e-10, maxit = 10000) {
+  
+  # Base utility (excludes price): fitted values + alpha*price removes price effect
+  
+    delta_base <- beer_mkt$delta - log(beer_mkt$share_jg) * sigma +
+                alpha * beer_mkt$price
+  
+  # Actually: delta_base = beta0 + beta_alc*alc_j + xi = delta - sigma*ln(s_jg) + alpha*p
+  # Since delta = beta0 + beta_alc*alc_j - alpha*p + sigma*ln(s_jg) + xi
+  # => delta_base = delta + alpha*p - sigma*ln(s_jg)
+  
+    delta_base <- beer_mkt$delta + alpha * beer_mkt$price - 
+                sigma * log(beer_mkt$share_jg)
+  
+ 
+     mc_t  <- beer_mkt[[mc_col]]
+     p_t   <- beer_mkt$price  # starting guess
+  
+  for (iter in 1:maxit) {
+    
+    shares <- compute_shares(p_t, delta_base, sigma)
+    sj_t   <- shares$sj
+    sj_g_t <- shares$sj_g
+    
+    # Single-product Nash markup
+   
+     markup_t <- (1 - sigma) / 
+      (alpha * (1 - sigma * sj_g_t - (1 - sigma) * sj_t))
+    
+      p_new <- mc_t + markup_t
+    
+      if (max(abs(p_new - p_t)) < tol) break
+      p_t <- p_new
+    }
+  
+  return(p_new)
+}
+```
+
+We loop over all `r n_distinct(beer$market_id)` markets, solving two price 
+vectors in each: one with the observed marginal costs (a consistency check 
+that should reproduce observed prices), and one with the post-tax marginal costs.
+
+```{r solve-all-markets, cache=TRUE}
+# Solve for counterfactual prices in each market
+
+  markets <- unique(beer$market_id)
+
+# Pre-allocate
+
+  beer$price_tax  <- NA
+  beer$price_notax <- NA  # check: should recover original prices
+
+  for (m in markets) {
+  
+    idx <- beer$market_id == m
+    beer_m <- beer[idx, ]
+    
+    # Check: no tax should recover original prices
+    beer$price_notax[idx] <- solve_prices(beer_m, "mc_implied", sigma, alpha)
+    
+    # With tax
+    beer$price_tax[idx]   <- solve_prices(beer_m, "mc_tax",    sigma, alpha)
+  }
+```
+
+**Step 4: Check — No-Tax Prices Should Equal Observed Prices**
+
+Before analysing tax effects, we verify that running our contraction mapping 
+with unchanged marginal costs recovers the observed prices. Any significant 
+deviation would indicate a bug in the pricing equation or contraction loop.
+
+```{r check-notax}
+cat("Max deviation (no-tax prices vs observed):",
+    round(max(abs(beer$price_notax - beer$price)), 6), "\n")
+cat("Mean deviation:",
+    round(mean(abs(beer$price_notax - beer$price)), 6), "\n")
+```
+
+**Step 5: Analyse Price Effects**
+
+Now, compare the average price increase with the average marginal cost 
+increase. Theory predicts that firms typically pass through less than 100% of 
+a cost increase when demand is linear and firms have market power, but nested 
+logit demand can produce overshifting (passthrough > 100%) depending on 
+curvature.
+
+```{r price-effects}
+beer <- beer |>
+  mutate(
+    delta_price   = price_tax - price,
+    pct_price_chg = 100 * (price_tax - price) / price
+  )
+
+# Percentage change in average price
+
+cat("% change in average price:", 
+    round(100 * (mean(beer$price_tax) - mean(beer$price)) / mean(beer$price), 3), "%\n")
+```
+
+*Mean Price increase vs Mean Marginal Cost increase*
+
+| | Mean Price Increase (£) | Mean MC Increase (£) |
+|---|---|---|
+| All beers | `r round(mean(beer$delta_price), 3)` | `r round(mean(beer$delta_mc), 3)` |
+
+**Step 6: Compute New Quantities and Analyse by Beer Type**
+
+To evaluate the quantity response, we compute new market shares at the 
+post-tax equilibrium prices and multiply by market size to obtain quantities.
+
+```{r new-quantities}
+# Compute new shares and quantities after tax
+
+beer <- beer |>
+  group_by(market_id) |>
+  mutate(
+    
+    # Recompute share_0 at new prices using contraction output
+    # New delta at tax prices:
+    
+      delta_tax  = delta + alpha * (price - price_tax),  
+   
+    # New shares via logit inversion approximation:
+    
+      share_jt_tax = exp(delta_tax / (1 - sigma)) / 
+        (1 + sum(exp(delta_tax / (1 - sigma))^(1 - sigma))^(1/(1-sigma))),
+      quantity_tax = share_jt_tax * marketsize
+    ) |>
+    ungroup()
+
+# % change in total quantity
+
+Q_pre  <- sum(beer$quantity)
+Q_post <- sum(beer$quantity_tax)
+
+cat("% change in total quantity:", 
+    round(100 * (Q_post - Q_pre) / Q_pre, 3), "%\n")
+```
+
+To see heterogeneity in the tax incidence, we split products into low, medium, 
+and high alcohol groups (by tercile) and compute average cost increases, price 
+increases, and quantity changes for each group. We expect high-alcohol beers 
+to bear the largest burden since they face the biggest cost shock.
+
+```{r by-beer-type, fig.height=4, fig.width=7}
+# Analyse by alcohol strength: split into low/medium/high
+  
+  beer <- beer |>
+    mutate(
+      alc_group = cut(alc_j,
+                      breaks = quantile(alc_j, c(0, 1/3, 2/3, 1)),
+                      labels = c("Low Alcohol", "Medium Alcohol", "High Alcohol"),
+                      include.lowest = TRUE)
+    )
+
+# Mean price change and quantity change by group
+
+  type_summary <- beer |>
+    group_by(alc_group) |>
+    summarise(
+      mean_delta_mc    = round(mean(delta_mc), 3),
+      mean_delta_price = round(mean(delta_price), 3),
+      pct_qty_change   = round(100 * (sum(quantity_tax) - sum(quantity)) / sum(quantity), 2)
+    )
+  
+  kable(type_summary, 
+        col.names = c("Beer Type", "Mean ΔMC (£)", "Mean ΔPrice (£)", "% Qty Change"),
+        caption   = "Tax Effects by Alcohol Strength")
+```
+
+**Step 7: Aggregate Demand Elasticity**
+
+Finally, the ratio of the aggregate quantity change to the aggregate price 
+change gives an implicit elasticity of aggregate beer demand. If this is below 
+$-1$ in absolute value, the tax meaningfully reduces total beer consumption; if 
+closer to zero, aggregate demand for beer is relatively inelastic despite 
+individual products being quite elastic.
+
+```{r agg-elasticity}
+pct_price <- 100 * (mean(beer$price_tax) - mean(beer$price)) / mean(beer$price)
+pct_qty   <- 100 * (Q_post - Q_pre) / Q_pre
+
+cat("% change in average price:   ", round(pct_price, 3), "%\n")
+cat("% change in total quantity:  ", round(pct_qty, 3), "%\n")
+cat("Implied aggregate elasticity:", round(pct_qty / pct_price, 3), "\n")
+```
+
+**Comment:** 
+
+The average price increase (`r round(mean(beer$delta_price), 3)` £) 
+exceeds the average marginal cost increase (`r round(mean(beer$delta_mc), 3)` £), 
+indicating overshifting of the tax — firms raise prices by more than the cost 
+increase. This is a known feature of nested logit demand. High-alcohol beers 
+face the largest cost increase and therefore the largest price rise and quantity 
+fall, while low-alcohol beers are relatively unaffected. The implied aggregate 
+demand elasticity of `r round(pct_qty / pct_price, 3)` suggests aggregate beer 
+demand is [elastic/inelastic — fill in based on your output], meaning the tax 
+is [effective/ineffective] at reducing total beer consumption.
+
+
+
+# Auto demand
+
+## (a)
+
+## (b)
+
+## (c)
+
+
+
+
+
+
