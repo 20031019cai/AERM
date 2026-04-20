@@ -317,8 +317,16 @@ in the elasticity and markup formulas.
 alpha <- -coef(model_iv)["price"]          # price parameter (positive)
 sigma <- coef(model_iv)["ln_share_jg"]     # nesting parameter
 
-cat("alpha:", round(alpha, 4), "\n")
-cat("sigma:", round(sigma, 4), "\n")
+# Display estimated parameters
+
+  param_table <- data.frame(
+    Parameter = c("$\\hat{\\alpha}$ (price)",
+                  "$\\hat{\\sigma}$ (nesting)"),
+    Value     = c(round(alpha, 4),
+                  round(sigma, 4))
+  )
+  
+  kable(param_table, caption = "Estimated Parameters")
 ```
 
 With $\hat{\alpha}$ and $\hat{\sigma}$ in hand, we can compute own-price 
