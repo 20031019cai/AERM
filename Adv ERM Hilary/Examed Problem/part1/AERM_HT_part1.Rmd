@@ -1070,14 +1070,15 @@ observable demographics. Spec 2 has `invinc*price` =
 `r round(car_est_s2$theta_rc["invinc*price"], 2)` (significant), meaning 
 consumers with low income (high $1/y_i$) are much more price-sensitive — 
 exactly the BLP(1995) mechanism. The two specs also differ in their GMM 
-objective values (`r round(car_est_s1$GMM, 0)` vs 
-`r round(car_est_s2$GMM, 0)`), indicating Spec 2 fits the moment conditions 
-much better, consistent with Spec 2 using a more realistic source of 
-heterogeneity. Non-price characteristic parameters also differ: Spec 1 
-gives implausibly large negative values (e.g. `hpwt` = 
-`r round(car_est_s1$theta_lin["hpwt"], 2)`) while Spec 2 gives more moderate 
-coefficients (e.g. `hpwt` = `r round(car_est_s2$theta_lin["hpwt"], 2)`), 
-again suggesting Spec 2 is the better-identified model.
+objective values (`r round(car_est_s1$local_min, 0)` vs 
+`r round(car_est_s2$local_min, 0)`), indicating Spec 2 fits the moment 
+conditions much better, consistent with Spec 2 using a more realistic 
+source of heterogeneity. Non-price characteristic parameters also differ: 
+Spec 1 gives implausibly large negative values (e.g. `hpwt` = 
+`r round(car_est_s1$theta_lin["hpwt", 1], 2)`) while Spec 2 gives more 
+moderate coefficients (e.g. `hpwt` = 
+`r round(car_est_s2$theta_lin["hpwt", 1], 2)`), again suggesting Spec 2 
+is the better-identified model.
 
 
 \newpage
@@ -1212,7 +1213,7 @@ For Specification 2, we use starting values informed by BLP(1995) and the
 classwork example — approximately (-14.12, 5.32, -3.32, -3.17, -0.62) for 
 the unobserved heterogeneity $\sigma_k$ on (const, hpwt, air, mpd, space) 
 and -25.3 for the income-price interaction. These values converged cleanly 
-to a GMM value of `r round(car_est_s2$min_in_outer_loop, 0)` with the BLP 
+to a GMM value of `r round(car_est_s2$local_min, 0)` with the BLP 
 inversion matching observed shares exactly.
 
 For Specification 1, initial attempts with uniform starting values 
@@ -1222,7 +1223,7 @@ not match observed shares. We therefore adopted starting values informed by
 Spec 2's estimates for the non-price characteristics — approximately 
 (0.1, 3, 1, 1, 0.5, 0.5) for (price, const, hpwt, air, mpd, space). These 
 values reach the lowest GMM objective we found 
-(`r round(car_est_s1$min_in_outer_loop, 0)`), with the BLP inversion now 
+(`r round(car_est_s1$local_min, 0)`), with the BLP inversion now 
 matching observed shares exactly.
 
 Even so, Spec 1's GMM objective remains substantially higher than Spec 2's, 
