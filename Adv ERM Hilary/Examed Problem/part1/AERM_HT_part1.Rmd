@@ -903,7 +903,7 @@ sample period, reflecting increasing product variety in the US car market.
 
 \newpage
 
-## Q2 (a): Estimating Two BLP Specifications
+## Q2 (a) Estimating Two BLP Specifications
 
 **Step 1: Prepare Data**
 
@@ -1273,7 +1273,7 @@ is the better-identified model.
 
 \newpage
 
-## Q2 (b)
+## Q2 (b) Elasticities, Marginal Costs and Markups for 1971
 
 We use both estimated models to compute own- and cross-price elasticities 
 for a subset of 1971 cars spanning the price distribution, then back out 
@@ -1431,7 +1431,7 @@ specification.
 **Step 2: Select an Interesting Subset of 1971 Products**
 
 We choose products spanning the price distribution so we can visualise how 
-substitution patterns differ across the price spectrum.
+substitution patterns differ accross the price spectrum.
 
 ```{r subset-1971}
 # Look at 1971 (cdid = 1) price distribution to pick representative cars
@@ -1661,7 +1661,267 @@ consumers) than with cheap cars.
 
 \newpage
 
-## Q2 (c)
+## Q2 (c) Effect of a 20% VAT on 1971 Prices
+
+Impose a 20% VAT on cars, for 1971 only. Under VAT:
+
+$$p_j^c = 1.2 \cdot p_j^f$$
+
+where $p_j^c$ is the consumer price (what enters demand) and $p_j^f$ is the 
+producer price (what the firm sets and receives). The firm still maximises 
+profit over the price it controls, $p_j^f$, but consumer demand now responds 
+to $1.2 p_j^f$.
+
+**How the FOC changes**
+
+Without tax, the multi-product Nash FOC is:
+
+$$\mathbf{p} - \mathbf{mc} = -[\Omega \odot \mathbf{D}(\mathbf{p})]^{-1} \mathbf{s}$$
+
+With a 20% VAT, consumers respond to $p_j^c = 1.2 p_j^f$. By the chain rule, 
+share derivatives with respect to producer prices are $1.2$ times the 
+derivatives with respect to consumer prices. The FOC becomes:
+
+$$\mathbf{p}^f - \mathbf{mc} = -[\Omega \odot (1.2 \cdot \mathbf{D}(\mathbf{p}^c))]^{-1} \mathbf{s}$$
+
+We use `nleqslv()` to find the producer-price vector that zeros this FOC, 
+following the structure of Classwork 6.
+
+```{r foc-vat-setup}
+# FOC function: returns (pf - mc - markup) — should equal 0 at equilibrium
+# mkt_target = market id (numeric, e.g. 1 for 1971)
+
+  foc_vat_mkt <- function(pf, blp_data, par_theta2, own_prod, 
+                           mc_vec, mkt_target, vat = 0.20) {
+    
+    mkt_ind <- blp_data$parameters$market_id == mkt_target
+    
+    # Put consumer prices into the data (temporarily)
+    
+      pc <- (1 + vat) * pf
+      blp_data$data$X_rand[mkt_ind, "price"] <- pc
+    
+    # Shares at these consumer prices
+    
+      tmp_share <- getShareInfo(
+        blp_data   = blp_data,
+        par_theta2 = par_theta2,
+        printLevel = 0
+      )
+      share_mkt <- tmp_share$shares[mkt_ind]
+    
+    # Elasticities -> derivatives wrt consumer price
+    
+      elast_mkt <- get_elasticities(
+        blp_data    = blp_data,
+        share_info  = tmp_share,
+        theta_lin   = 0,
+        variable    = "price",
+        market      = mkt_target,
+        printLevel  = 0
+      )
+      
+      scalar_mkt <- matrix(1 / share_mkt) %*% matrix(pc, nrow = 1)
+      deriv_pc   <- elast_mkt / scalar_mkt
+      deriv_pf   <- (1 + vat) * deriv_pc
+    
+    # Markup implied by multi-product Nash
+    
+      markup <- c(-solve(t(deriv_pf) * own_prod) %*% share_mkt)
+    
+    # FOC residual
+    
+      return(pf - mc_vec - markup)
+  }
+```
+
+```{r vat-solve}
+# Solve the FOC for each spec in 1971 using nleqslv
+
+  mkt_target  <- 1
+  mkt_ind_1971 <- car_data_s1$parameters$market_id == mkt_target
+  own_mkt     <- own_matrix[mkt_ind_1971, ]
+  own_prod_1  <- own_mkt %*% t(own_mkt)
+
+# Spec 1
+
+  pf_start_s1 <- result_s1$price  # start at observed prices
+  
+  sol_s1 <- nleqslv(
+    x          = pf_start_s1,
+    fn         = foc_vat_mkt,
+    blp_data   = car_data_s1,
+    par_theta2 = theta2_s1,
+    own_prod   = own_prod_1,
+    mc_vec     = result_s1$mc,
+    mkt_target = mkt_target,
+    vat        = 0.20
+  )
+  
+# Spec 2
+
+  pf_start_s2 <- result_s2$price
+  
+  sol_s2 <- nleqslv(
+    x          = pf_start_s2,
+    fn         = foc_vat_mkt,
+    blp_data   = car_data_s2,
+    par_theta2 = theta2_s2,
+    own_prod   = own_prod_1,
+    mc_vec     = result_s2$mc,
+    mkt_target = mkt_target,
+    vat        = 0.20
+  )
+
+# Report convergence
+
+  conv_table <- data.frame(
+    Specification = c("Spec 1", "Spec 2"),
+    Convergence_code = c(sol_s1$termcd, sol_s2$termcd),
+    Interpretation = c(
+      
+      # termcd = 1 indicates successful convergence to a solution of the FOC
+
+        ifelse(sol_s1$termcd == 1, "Converged", "Did not fully converge"),
+        ifelse(sol_s2$termcd == 1, "Converged", "Did not fully converge")
+    )
+  )
+  
+  kable(conv_table, caption = "nleqslv Convergence Codes (1 = success)")
+```
+
+
+
+**Consistency check**
+
+We verify that solving the same system with `vat = 0` recovers the observed 
+prices, this is just to confirm taht the FOC is coded correctly.
+
+```{r vat-zero-check}
+# Sanity check: VAT = 0 should return the observed prices
+
+  check_s2 <- nleqslv(
+    x          = pf_start_s2,
+    fn         = foc_vat_mkt,
+    blp_data   = car_data_s2,
+    par_theta2 = theta2_s2,
+    own_prod   = own_prod_1,
+    mc_vec     = result_s2$mc,
+    mkt_target = mkt_target,
+    vat        = 0
+  )
+  
+  cat("Max deviation (VAT=0 price vs observed):",
+      round(max(abs(check_s2$x - autoData_1971$price)), 4), "\n")
+```
+
+**Compare prices before and after the tax**
+
+```{r vat-results}
+# Assemble 1971 price comparison
+
+  vat_compare <- data.frame(
+    id        = autoData_1971$id,
+    model_id  = autoData_1971$model_id,
+    p_orig    = autoData_1971$price,
+    
+    pf_s1     = sol_s1$x,
+    pc_s1     = 1.20 * sol_s1$x,
+    pct_pc_s1 = 100 * (1.20 * sol_s1$x - autoData_1971$price) / autoData_1971$price,
+    
+    pf_s2     = sol_s2$x,
+    pc_s2     = 1.20 * sol_s2$x,
+    pct_pc_s2 = 100 * (1.20 * sol_s2$x - autoData_1971$price) / autoData_1971$price
+  )
+
+# Split into low/high price halves at median
+
+  price_median <- median(vat_compare$p_orig)
+  vat_compare$price_group <- ifelse(vat_compare$p_orig < price_median, 
+                                     "Low price", "High price")
+
+# Summary by price group
+
+  vat_summary <- vat_compare |>
+    group_by(price_group) |>
+    summarise(
+      mean_p_orig    = round(mean(p_orig),     3),
+      mean_pf_s1     = round(mean(pf_s1),      3),
+      mean_pc_s1     = round(mean(pc_s1),      3),
+      mean_pctpc_s1  = round(mean(pct_pc_s1),  2),
+      mean_pf_s2     = round(mean(pf_s2),      3),
+      mean_pc_s2     = round(mean(pc_s2),      3),
+      mean_pctpc_s2  = round(mean(pct_pc_s2),  2)
+    )
+
+# Transpose for readability
+
+  vat_t <- vat_summary |>
+    column_to_rownames("price_group") |>
+    t()
+  
+  rownames(vat_t) <- c("Mean original price",
+                       "Mean producer price (Spec 1)",
+                       "Mean consumer price (Spec 1)",
+                       "Mean % change in consumer price (Spec 1)",
+                       "Mean producer price (Spec 2)",
+                       "Mean consumer price (Spec 2)",
+                       "Mean % change in consumer price (Spec 2)")
+  
+  kable(vat_t, caption = "1971 Prices Before and After 20% VAT, by Price Group")
+```
+
+```{r vat-plots, fig.height=4, fig.width=9}
+# % change in consumer price vs original price for each spec
+
+  par(mfrow = c(1, 2))
+  
+  plot(vat_compare$p_orig, vat_compare$pct_pc_s1,
+       main = "Spec 1: % Change in Consumer Price",
+       xlab = "Original Price ($000s)", 
+       ylab = "% Change in Consumer Price",
+       pch  = 16, col = "steelblue")
+  abline(h = 20, col = "red", lty = 2)
+  
+  plot(vat_compare$p_orig, vat_compare$pct_pc_s2,
+       main = "Spec 2: % Change in Consumer Price",
+       xlab = "Original Price ($000s)", 
+       ylab = "% Change in Consumer Price",
+       pch  = 16, col = "darkorange")
+  abline(h = 20, col = "red", lty = 2)
+```
+
+The red dashed line at 20% marks full passthrough: points above mean 
+overshifting (consumer prices rise by more than the tax rate), points below 
+mean firms absorb part of the tax.
+
+**Comment:** 
+
+Under a 20% VAT, the two specifications produce strikingly different results.
+
+Spec 2 (income-interacted price) generates sensible, economically meaningful 
+patterns: consumer-price increases range roughly from 5% to 30%, clustered 
+around 15%, with a visible upward trend in original price. High-priced cars 
+experience a larger percentage consumer-price increase than low-priced cars. 
+The mechanism is that high-price cars are bought by high-income, 
+price-insensitive consumers, so firms can pass more of the tax through 
+without losing many customers. **The commentators' concern** (low-priced 
+cars would bear a disproportionately large percentage burden) **is not supported under Spec 2**.
+
+Spec 1 (symmetric random coefficient on price) produces numerically 
+**implausible results**: percentage consumer-price changes reach several hundred 
+percent for cheap cars, inconsistent with any reasonable tax incidence. 
+This reflects the identification problem we noted in part (a): Spec 1's 
+estimated $\sigma_p$ on price is essentially zero, so the price-derivative 
+matrix becomes near-singular and the FOC solver struggles to find a sensible 
+equilibrium. The extreme values are an artefact of this, not a real 
+economic prediction.
+
+Spec 2 is the credible model for policy analysis. Its 
+structured heterogeneity through income makes the FOC well-behaved and 
+produces interpretable counterfactual predictions. Under Spec 2, the 
+commentators' worry about regressive burden is misplaced: high-priced cars 
+bear a larger percentage burden, not low-priced cars.
 
 
 
