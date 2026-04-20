@@ -210,7 +210,7 @@ So we need instruments:
   )
 ```
 
-```{r results-table}
+```{r Q1bresults-table}
 # Compare OLS and IV results
 
 modelsummary(
@@ -1044,12 +1044,89 @@ car_est_s2 <- estimateBLP(
 
 **Results**
 
-```{r results, results='show'}
-cat("=== Specification 1 ===\n")
-summary(car_est_s1)
+```{r Q2aresults-table}
+# Build comparison table for linear coefficients
 
-cat("\n=== Specification 2 ===\n")
-summary(car_est_s2)
+  lin_table <- data.frame(
+    Variable = rownames(car_est_s1$theta_lin),
+    Spec1_Est = round(car_est_s1$theta_lin[, 1], 3),
+    Spec1_SE  = round(car_est_s1$se_linear,     3),
+    Spec2_Est = round(car_est_s2$theta_lin[, 1], 3),
+    Spec2_SE  = round(car_est_s2$se_linear,     3)
+  )
+  
+  kable(lin_table, 
+        col.names = c("Variable", "Spec 1 Est.", "Spec 1 SE",
+                                  "Spec 2 Est.", "Spec 2 SE"),
+        caption = "Linear Coefficients: Spec 1 vs Spec 2",
+        row.names = FALSE)
+```
+
+```{r rc-table}
+# Build comparison table for random coefficients (nonlinear parameters)
+# Spec 1 has unobs_sd on all 6 vars; Spec 2 has unobs_sd on 5 chars + invinc*price
+
+  rc_vars <- c("const", "hpwt", "air", "mpd", "space", "price")
+  
+  rc_table <- data.frame(
+    Variable = rc_vars,
+    
+    Spec1_Est = round(c(
+      car_est_s1$theta_rc["unobs_sd*const"],
+      car_est_s1$theta_rc["unobs_sd*hpwt"],
+      car_est_s1$theta_rc["unobs_sd*air"],
+      car_est_s1$theta_rc["unobs_sd*mpd"],
+      car_est_s1$theta_rc["unobs_sd*space"],
+      car_est_s1$theta_rc["unobs_sd*price"]
+    ), 3),
+    
+    Spec1_SE = round(c(
+      car_est_s1$se_rc["unobs_sd*const"],
+      car_est_s1$se_rc["unobs_sd*hpwt"],
+      car_est_s1$se_rc["unobs_sd*air"],
+      car_est_s1$se_rc["unobs_sd*mpd"],
+      car_est_s1$se_rc["unobs_sd*space"],
+      car_est_s1$se_rc["unobs_sd*price"]
+    ), 3),
+    
+    Spec2_Est = round(c(
+      car_est_s2$theta_rc["unobs_sd*const"],
+      car_est_s2$theta_rc["unobs_sd*hpwt"],
+      car_est_s2$theta_rc["unobs_sd*air"],
+      car_est_s2$theta_rc["unobs_sd*mpd"],
+      car_est_s2$theta_rc["unobs_sd*space"],
+      car_est_s2$theta_rc["invinc*price"]    # Note: different parameter for Spec 2
+    ), 3),
+    
+    Spec2_SE = round(c(
+      car_est_s2$se_rc["unobs_sd*const"],
+      car_est_s2$se_rc["unobs_sd*hpwt"],
+      car_est_s2$se_rc["unobs_sd*air"],
+      car_est_s2$se_rc["unobs_sd*mpd"],
+      car_est_s2$se_rc["unobs_sd*space"],
+      car_est_s2$se_rc["invinc*price"]
+    ), 3)
+  )
+  
+  kable(rc_table,
+        col.names = c("Variable", "Spec 1 σ (unobs)", "SE",
+                                  "Spec 2 σ or 1/y", "SE"),
+        caption = "Nonlinear Parameters: Spec 1 (all unobs_sd) vs Spec 2 (unobs_sd + invinc*price)",
+        row.names = FALSE)
+```
+
+```{r fit-table}
+# Model fit comparison
+
+  fit_table <- data.frame(
+    Statistic = c("GMM objective", "Outer iterations"),
+    Spec1 = c(round(car_est_s1$local_min, 2), 
+              car_est_s1$outer_it),
+    Spec2 = c(round(car_est_s2$local_min, 2),
+              car_est_s2$outer_it)
+  )
+  
+  kable(fit_table, caption = "Model Fit and Convergence")
 ```
 
 **Comment on clustering:** We cluster standard errors by `model_id` because 
