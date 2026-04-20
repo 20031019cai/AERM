@@ -91,15 +91,30 @@ Set up:
 
 ```{r market-structure}
 # Number of markets and products per market
-cat("Number of unique markets:  ", n_distinct(beer$market_id), "\n")
-cat("Number of unique products: ", n_distinct(beer$product_id), "\n")
 
-# Distribution of products per market
+  n_per_market <- beer |>
+    group_by(market_id) |>
+    summarise(n_products = n()) |>
+    pull(n_products)
 
-beer %>%
-  group_by(market_id) %>%
-  summarise(n_products = n()) %>%
-  summary()
+# Assemble summary table
+
+  market_table <- data.frame(
+    Statistic = c("Number of unique markets",
+                  "Number of product-market observations",
+                  "Min products per market",
+                  "Median products per market",
+                  "Mean products per market",
+                  "Max products per market"),
+    Value = c(n_distinct(beer$market_id),
+              nrow(beer),
+              min(n_per_market),
+              median(n_per_market),
+              round(mean(n_per_market), 2),
+              max(n_per_market))
+  )
+  
+  kable(market_table, caption = "Market Structure")
 ```
 
 **Comment:** 
@@ -145,9 +160,17 @@ beer <- beer |>
   ungroup()
 
 # Sanity checks
-cat("Min outside good share: ", round(min(beer$share_0), 4), "\n")
-cat("Max outside good share: ", round(max(beer$share_0), 4), "\n")
-cat("All shares positive:    ", all(beer$share_jt > 0), "\n")
+
+  sanity_table <- data.frame(
+    Check = c("Min outside good share",
+              "Max outside good share",
+              "All shares positive"),
+    Value = c(round(min(beer$share_0), 4),
+              round(max(beer$share_0), 4),
+              all(beer$share_jt > 0))
+  )
+  
+  kable(sanity_table, caption = "Market Share Sanity Checks")
 ```
 
 **Step 2: Construct the Dependent Variable and Regressors**
@@ -234,11 +257,13 @@ modelsummary(
 ```
 
 ```{r first-stage-output}
-cat("=== First Stage: Price ===\n")
-summary(fs_price)$coefficients
+# First-stage regression results
 
-cat("\n=== First Stage: ln(within-group share) ===\n")
-summary(fs_share)$coefficients
+  kable(round(summary(fs_price)$coefficients, 4),
+        caption = "First Stage: Price")
+
+  kable(round(summary(fs_share)$coefficients, 4),
+        caption = "First Stage: ln(within-group share)")
 ```
 
 **Identification assumptions:** The validity of the IV estimates rests on two conditions. 
