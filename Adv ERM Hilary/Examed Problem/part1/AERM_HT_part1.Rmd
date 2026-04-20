@@ -537,12 +537,7 @@ from observed prices, we iteratively apply the Nash pricing rule
 $p = mc^{\text{tax}} + \text{markup}(s(p))$ until prices converge (tolerance 
 $10^{-10}$). 
 
-A key subtlety: we need the "base utility" 
-
-$\delta^{\text{base}}_{jt} = \beta_0 + \beta_{\text{alc}} \text{alc}_j + \xi_{jt}$ 
-
-that excludes the price term, which we recover from the estimated $\delta_{jt}$ 
-by adding back $\alpha p_{jt}$ and subtracting the $\sigma \ln(s_{j|g,t})$ term.
+A key subtlety: we need the "base utility" $\delta^{\text{base}}_{jt} = \beta_0 + \beta_{\text{alc}} \text{alc}_j + \xi_{jt}$ that excludes the price term, which we recover from the estimated $\delta_{jt}$ by adding back $\alpha p_{jt}$ and subtracting the $\sigma \ln(s_{j|g,t})$ term.
 
 ```{r contraction}
 # We solve market by market
@@ -643,23 +638,27 @@ logit demand can produce overshifting (passthrough > 100%) depending on
 curvature.
 
 ```{r price-effects}
-beer <- beer |>
-  mutate(
-    delta_price   = price_tax - price,
-    pct_price_chg = 100 * (price_tax - price) / price
+# Compute price changes
+
+  beer <- beer |>
+    mutate(
+      delta_price   = price_tax - price,
+      pct_price_chg = 100 * (price_tax - price) / price
+    )
+
+# Summarise price effects
+
+  price_effects <- data.frame(
+    Statistic = c("Mean price increase (£)",
+                  "Mean MC increase (£)",
+                  "% change in average price"),
+    Value     = c(round(mean(beer$delta_price), 3),
+                  round(mean(beer$delta_mc), 3),
+                  round(100 * (mean(beer$price_tax) - mean(beer$price)) / mean(beer$price), 3))
   )
-
-# Percentage change in average price
-
-cat("% change in average price:", 
-    round(100 * (mean(beer$price_tax) - mean(beer$price)) / mean(beer$price), 3), "%\n")
+  
+  kable(price_effects, caption = "Price Effects of the Tax")
 ```
-
-*Mean Price increase vs Mean Marginal Cost increase*
-
-| | Mean Price Increase (£) | Mean MC Increase (£) |
-|---|---|---|
-| All beers | `r round(mean(beer$delta_price), 3)` | `r round(mean(beer$delta_mc), 3)` |
 
 **Step 6: Compute New Quantities and Analyse by Beer Type**
 
@@ -689,13 +688,21 @@ beer <- beer |>
     ) |>
     ungroup()
 
-# % change in total quantity
+# Total quantity change
 
-Q_pre  <- sum(beer$quantity)
-Q_post <- sum(beer$quantity_tax)
-
-cat("% change in total quantity:", 
-    round(100 * (Q_post - Q_pre) / Q_pre, 3), "%\n")
+  Q_pre  <- sum(beer$quantity)
+  Q_post <- sum(beer$quantity_tax)
+  
+  qty_table <- data.frame(
+    Statistic = c("Total quantity pre-tax",
+                  "Total quantity post-tax",
+                  "% change in total quantity"),
+    Value     = c(round(Q_pre, 2),
+                  round(Q_post, 2),
+                  round(100 * (Q_post - Q_pre) / Q_pre, 3))
+  )
+  
+  kable(qty_table, caption = "Total Quantity Response to the Tax")
 ```
 
 To see heterogeneity in the tax incidence, we split products into low, medium, 
