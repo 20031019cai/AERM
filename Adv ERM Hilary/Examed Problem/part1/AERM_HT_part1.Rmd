@@ -1270,15 +1270,21 @@ the consumer-level shares $s_{ij}$, which we will need for elasticities.
     spec2    = shareObj_s2$shares
   )
   
-  cat("Max |Spec1 - Observed|:", 
-      round(max(abs(share_check$spec1 - share_check$observed)), 8), "\n")
-  cat("Max |Spec2 - Observed|:", 
-      round(max(abs(share_check$spec2 - share_check$observed)), 8), "\n")
-  cat("Max |Spec1 - Spec2|:   ",    
-      round(max(abs(share_check$spec1 - share_check$spec2)),    8), "\n")
+# Assemble comparison table
+
+  check_table <- data.frame(
+    Comparison = c("Max |Spec 1 - Observed|", 
+                   "Max |Spec 2 - Observed|", 
+                   "Max |Spec 1 - Spec 2|"),
+    Value = c(round(max(abs(share_check$spec1 - share_check$observed)), 8),
+              round(max(abs(share_check$spec2 - share_check$observed)), 8),
+              round(max(abs(share_check$spec1 - share_check$spec2)),    8))
+  )
+  
+  kable(check_table, caption = "Share Inversion Sanity Check")
 ```
 
-Now, we see all three differences are near zero, both models successfully invert to 
+Now, we see all three differences are zero, both models successfully invert to 
 the observed shares, confirming the data objects were correctly updated.
 
 **Comment on starting values:** BLP estimation is known to be sensitive to 
