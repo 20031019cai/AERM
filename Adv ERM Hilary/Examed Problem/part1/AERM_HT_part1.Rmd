@@ -622,10 +622,16 @@ with unchanged marginal costs recovers the observed prices. Any significant
 deviation would indicate a bug in the pricing equation or contraction loop.
 
 ```{r check-notax}
-cat("Max deviation (no-tax prices vs observed):",
-    round(max(abs(beer$price_notax - beer$price)), 6), "\n")
-cat("Mean deviation:",
-    round(mean(abs(beer$price_notax - beer$price)), 6), "\n")
+# Verify: no-tax contraction should reproduce observed prices
+
+  notax_check <- data.frame(
+    Statistic = c("Max deviation (no-tax vs observed)",
+                  "Mean deviation"),
+    Value     = c(round(max(abs(beer$price_notax - beer$price)), 6),
+                  round(mean(abs(beer$price_notax - beer$price)), 6))
+  )
+  
+  kable(notax_check, caption = "No-Tax Consistency Check")
 ```
 
 **Step 5: Analyse Price Effects**
