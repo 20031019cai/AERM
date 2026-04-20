@@ -1062,13 +1062,6 @@ tolerance $10^{-9}$ and up to 5000 iterations to ensure accurate share
 inversion at each step of the outer optimisation. We use MLHS integration 
 with `r ndraws` draws, which balances accuracy against computational cost.
 
-**Comment on starting values:** BLP estimation is sensitive to starting 
-values due to the presence of local minima in the GMM objective. We tried 
-multiple starting value vectors and selected those giving the lowest GMM 
-objective value. Results were broadly stable across starting values close 
-to those reported, but some distant starting values produced numerical 
-problems or convergence to inferior local minima.
-
 **Comparison of specifications:** Both models produce negative price effects, 
 but they operate differently. Spec 1 has $\hat{\sigma}_p$ = 
 `r round(car_est_s1$theta_rc["unobs_sd*price"], 2)` on price (significant), 
