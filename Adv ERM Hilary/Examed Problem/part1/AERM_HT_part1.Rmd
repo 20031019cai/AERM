@@ -741,9 +741,18 @@ individual products being quite elastic.
 pct_price <- 100 * (mean(beer$price_tax) - mean(beer$price)) / mean(beer$price)
 pct_qty   <- 100 * (Q_post - Q_pre) / Q_pre
 
-cat("% change in average price:   ", round(pct_price, 3), "%\n")
-cat("% change in total quantity:  ", round(pct_qty, 3), "%\n")
-cat("Implied aggregate elasticity:", round(pct_qty / pct_price, 3), "\n")
+# Aggregate effects
+
+  agg_table <- data.frame(
+    Statistic = c("% change in average price",
+                  "% change in total quantity",
+                  "Implied aggregate elasticity"),
+    Value     = c(round(pct_price, 3),
+                  round(pct_qty, 3),
+                  round(pct_qty / pct_price, 3))
+  )
+  
+  kable(agg_table, caption = "Aggregate Demand Response to the Tax")
 ```
 
 **Comment:** 
