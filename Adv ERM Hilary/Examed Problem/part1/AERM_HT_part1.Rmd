@@ -80,7 +80,7 @@ Set up:
 ```
 
 ```{r distributions, fig.height=4, fig.width=8}
-# Visualise distributions of price and alcohol content
+# 1. Distributions of price and alcohol content (histograms)
 
   par(mfrow = c(1, 3))
   
@@ -88,6 +88,63 @@ Set up:
   hist(beer$alc_j,        main = "Alcohol Content",   xlab = "alc", col = "orange")
   hist(beer$marginal_cost,main = "Marginal Cost (£)", xlab = "£",   col = "yellow")
 ```
+
+**Observations:**
+
+- **Price histogram**: shows the shape of the price distribution (right-skewed, most beers cheap with a few premium outliers)
+
+- **Alcohol content histogram**: shows alcohol is uniformly distributed, indicates that there is good variation in strength across products, so `alc_j` will have identifying power in regressions.
+
+- **Marginal cost histogram**: shows costs are tightly distributed between £1.00 and £1.60, indicates that costs vary enough to be a useful instrument for price.
+
+```{r alc-price-plots, fig.height=4, fig.width=10}
+# Compute binned means first
+
+  binned <- beer |>
+    mutate(alc_bin = cut(alc_j, breaks = 20)) |>
+    group_by(alc_bin) |>
+    summarise(mean_price = mean(price),
+              alc_mid    = mean(alc_j))
+
+# Side-by-side plots
+
+  par(mfrow = c(1, 2))
+
+# Left: Price vs alcohol content (raw scatter)
+  # This is to test whether stronger beers are more expensive
+  # Relevant for the later part (d) where the tax is proportional to alcohol
+
+  plot(beer$alc_j, beer$price,
+       main = "Price vs Alcohol Content",
+       xlab = "Alcohol Content (alc_j)",
+       ylab = "Price (£)",
+       pch  = 16,
+       col  = adjustcolor("steelblue", alpha.f = 0.2),
+       cex  = 0.5)
+
+# Right: Mean Price by Alcohol Content (binned means)
+
+  plot(binned$alc_mid, binned$mean_price,
+       main = "Mean Price by Alcohol Content",
+       xlab = "Alcohol Content (alc_j)",
+       ylab = "Mean Price (£)",
+       pch  = 16,
+       col  = "steelblue",
+       cex  = 1.2)
+```
+
+**Observations:** 
+
+The raw scatter (left) appears largely flat, but the binned means (right) 
+reveal a clear positive relationship — mean price rises from around £3.75 
+at low alcohol to £3.95 at high alcohol. The effect is modest in magnitude 
+(~£0.20 range) but consistent across alcohol bins. Two features also stand 
+out in the raw scatter: a "floating band" of premium beers priced around 
+£13 regardless of alcohol content, and a much denser mass of mainstream 
+beers clustered between £3 and £5. This pattern matters for part (d): 
+since stronger beers are already slightly more expensive on average, an 
+alcohol-based tax will amplify the existing price dispersion across the 
+strength spectrum.
 
 ```{r market-structure}
 # Number of markets and products per market
@@ -121,7 +178,8 @@ Set up:
 
 The data contains `r n_distinct(beer$market_id)` markets and 
 `r nrow(beer)` product-market observations, with between `r min(beer$num_prod_mkt)` 
-and `r max(beer$num_prod_mkt)` products per market (mean `r round(mean(table(beer$market_id)), 1)` products per market, or `r round(mean(beer$num_prod_mkt), 1)` averaging over observations).
+and `r max(beer$num_prod_mkt)` products per market (mean 
+`r round(mean(table(beer$market_id)), 1)` products per market).
 Prices range from £`r round(min(beer$price), 2)` to £`r round(max(beer$price), 2)` 
 with a mean of £`r round(mean(beer$price), 2)`, and are right-skewed — most beers 
 are cheap with a few expensive outliers. Marginal costs range from 
@@ -1601,6 +1659,7 @@ elasticity matrices also reveal more realistic substitution patterns under
 Spec 2 — luxury cars substitute more with each other (both bought by rich 
 consumers) than with cheap cars.
 
+\newpage
 
 ## Q2 (c)
 
