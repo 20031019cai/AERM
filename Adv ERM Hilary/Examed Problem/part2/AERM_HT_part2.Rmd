@@ -1,0 +1,226 @@
+---
+title: "Advanced Empirical Research Methods Hilary 2025/26"
+author: 'Candidate ID: 1091806'
+date: "2026-04-13"
+output:
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    toc_depth: 2
+    number_sections: false
+  html_document:
+    toc: true
+    toc_depth: '2'
+    df_print: paged
+subtitle: 'Assessment Exercise: Production Functions'
+fontsize: 11pt
+geometry: margin=1in
+header-includes:
+- \usepackage{amsmath}
+- \usepackage{float}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{amsmath}
+- \usepackage{newunicodechar}
+- \newunicodechar{ρ}{$\rho$}
+- \newunicodechar{π}{$\pi$}
+- \newunicodechar{ξ}{$\xi$}
+- \newunicodechar{ϕ}{$\phi$}
+---
+
+\newpage
+# Set up
+
+## Model
+
+We consider a two-factor Cobb-Douglas value-added production function in logs:
+
+$$v_{it} \;=\; \beta_0 \,+\, \beta_L \, l_{it} \,+\, \beta_K \, k_{it} \,+\, a_{it}, \qquad \beta_L + \beta_K < 1$$
+
+The price of value-added is normalised to one. Labour $L_{it}$ is perfectly flexible
+and chosen in period $t$ after the firm observes total factor productivity
+$A_{it} = \exp(a_{it})$ and the wage $W_{it}$. Capital $K_{it}$ is predetermined and
+chosen in period $t-1$ to maximise expected period-$t$ profit. There are no
+adjustment costs for either input, and the underlying gross-output technology is
+Leontief in value-added and a flexible intermediate input.
+
+## Stochastic processes
+
+Total factor productivity follows an AR(1):
+$$a_{it} \;=\; \rho \, a_{i,t-1} \,+\, \xi_{it}, \qquad \xi_{it} \sim \mathrm{i.i.d.}\, N(0, \sigma_\xi^2), \qquad 0 < \rho < 1.$$
+
+The log wage follows an MA(1):
+$$w_{it} \;=\; w \,+\, c_{it} \,+\, \phi \, c_{i,t-1}, \qquad c_{it} \sim \mathrm{i.i.d.}\, N(0, \sigma_c^2).$$
+
+The rental rate of capital $U$ is **fixed and common across firms and time**.
+
+The observed log of value-added is contaminated with classical measurement error:
+$$\tilde v_{it} \;=\; v_{it} \,+\, \varepsilon_{it}, \qquad \varepsilon_{it} \sim \mathrm{i.i.d.}\, N(0, \sigma_\varepsilon^2).$$
+
+## Information sets
+
+The firm's information set at $t-1$ includes $a_{i,t-1}$, $w_{i,t-1}$, $U$, and the
+fixed value-added price; it excludes $a_{it}$ and $w_{it}$. So $K_{it}$ is
+uncorrelated with $\xi_{it}$ by construction, while $L_{it}$ — chosen after
+$\xi_{it}$ is realised — is not.
+
+## Observed data
+
+Only the input and output quantities $\bigl(\tilde V_{it} = e^{\tilde v_{it}},\, L_{it},\, K_{it}\bigr)$ are observed.
+Wages, the rental rate, intermediate inputs, investment, and TFP are all unobserved.
+This rules out the GNR labour-share estimator (no $W$), the LP/ACF intermediate-input
+proxy (no $M$), the OP investment proxy (no $I$), and the wage instrument (no $W$).
+
+## Differences from the practice exercise
+
+Two assumptions on the DGP differ from `prod_sim_exercise.R` and matter for
+identification:
+
+1. The rental rate $U$ has **no firm-level variation** (we set `urndvar = 0`).
+2. Question 1 imposes $\phi = 0$, so the log wage is i.i.d.; Question 2(c)
+   re-runs the analysis with $\phi \ne 0$.
+
+These two restrictions together imply that capital is an *exact log-linear*
+function of past TFP — a key fact we use throughout.
+
+## Calibration for the simulations
+
+We follow the practice-script parameterisation but set the two switches above:
+
+| Parameter                       | Symbol            | Value                       |
+|---------------------------------|-------------------|-----------------------------|
+| Output elasticity of labour     | $\beta_L$         | 0.6                         |
+| Output elasticity of capital    | $\beta_K$         | 0.3                         |
+| AR(1) persistence of TFP        | $\rho$            | 0.5                         |
+| Variance of TFP innovation      | $\sigma_\xi^2$    | 0.05                        |
+| Mean log wage                   | $w$               | $\log(1) = 0$               |
+| Variance of wage innovation     | $\sigma_c^2$      | 0.05                        |
+| Log rental rate (fixed)         | $u$               | $\log(0.1)$                 |
+| Variance of measurement error   | $\sigma_\varepsilon^2$ | 0.1                    |
+| MA(1) wage parameter            | $\phi$            | 0 (Q1, Q2b, Q2d); 1 (Q2c)   |
+| Number of periods               | $T$               | 100,001                     |
+
+## R Set-up
+
+```{r r-setup, message=FALSE, warning=FALSE}
+# Load libraries
+  library(dplyr)    # data manipulation
+  library(psych)    # geometric.mean()
+  library(AER)      # ivreg(), linearHypothesis()
+  library(gmm)      # gmm()
+
+# Set seed
+  set.seed(1234)
+```
+
+
+## Reusable simulation function
+
+To keep the rest of the document concise, we wrap the DGP in a single function.
+It takes the two switches we toggle across questions ($\phi$ and `urndvar`) plus
+the standard parameters, and returns a data frame with the variables we will use:
+$\tilde v$, $l$, $k$, plus their lags and (for diagnostic purposes) the latent
+$a$ and $w$.
+
+```{r sim-function}
+simulate_pf <- function(obs   = 100001,
+                        bL    = 0.6,
+                        bK    = 0.3,
+                        rho   = 0.5,
+                        shkvar = 0.05,
+                        wfix   = log(1),
+                        wrndvar = 0.05,
+                        phi    = 0,
+                        ufix   = log(0.1),
+                        urndvar = 0,
+                        merrvar = 0.1) {
+
+  # AR(1) TFP
+  shk  <- rnorm(obs, mean = 0, sd = sqrt(shkvar))
+  stat <- rnorm(obs, mean = 0, sd = sqrt(shkvar / (1 - rho^2)))
+  a    <- stat
+  for (i in 2:obs) a[i] <- rho * a[i - 1] + shk[i]
+
+  # Rental rate (fixed if urndvar = 0)
+  u <- rnorm(obs, mean = ufix, sd = sqrt(urndvar))
+
+  # MA(1) log wage
+  wrnd <- rnorm(obs, mean = 0, sd = sqrt(wrndvar))
+  w    <- wfix + wrnd + phi * lag(wrnd)
+
+  # Capital decision rule (predetermined)
+  rat     <- bK / (1 - bL)
+  fac     <- 1 / (1 - rat)
+  pow     <- 1 / (1 - bL)
+  tau     <- bL^(bL * pow) - bL^pow
+  logetau <- log(tau) - bL * pow * wfix - phi * bL * pow * lag(wrnd) +
+             ((bL * pow)^2) * wrndvar / 2
+  k <- fac * (log(rat) + logetau - u + pow * rho * lag(a) +
+              0.5 * shkvar * pow^2)
+
+  # True log value-added (without measurement error)
+  v_true <- bL * pow * (log(bL) - w) + rat * k + pow * a
+
+  # Flexible labour decision rule
+  l <- pow * (log(bL) - w + bK * k + a)
+
+  # Add measurement error to obtain observed log value-added
+  merr <- rnorm(obs, mean = 0, sd = sqrt(merrvar))
+  vt   <- v_true + merr
+
+  data.frame(t = seq_len(obs), vt = vt, l = l, k = k,
+             a = a, w = w, v_true = v_true)
+}
+```
+
+A quick sanity check that the simulation matches the assumed DGP — the
+infeasible OLS regression of $\tilde v$ on $l$, $k$, and the true $a$ should
+recover $(\beta_0, \beta_L, \beta_K)$ up to sampling error, while feasible OLS
+omitting $a$ should not.
+
+```{r sim-check}
+dat0 <- simulate_pf(phi = 0)
+
+# Infeasible OLS — should give bL = 0.6, bK = 0.3
+summary(lm(vt ~ l + k + a, data = dat0))$coefficients
+
+# Feasible OLS omitting a — biased (transmission bias)
+summary(lm(vt ~ l + k,    data = dat0))$coefficients
+```
+
+If the infeasible OLS coefficients land near $(\beta_L, \beta_K) = (0.6, 0.3)$
+and the feasible OLS does not, the DGP is correctly implemented.
+
+\newpage
+# Question 1 Assume ϕ=0, 
+
+## Q1 (a) Two-stage procedure
+
+
+
+
+\newpage
+## Q1 (b)
+
+\newpage
+## Q1 (c)
+
+
+
+\newpage
+# Question 2
+
+## Q2 (a)
+
+\newpage
+## Q2 (b)
+
+\newpage
+## Q2 (c)
+
+
+
+
+
+
+

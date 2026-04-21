@@ -31,10 +31,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 \newpage
-# Libraries
-```{r message = FALSE, warning = FALSE}
-# Part 1 Empirical IO
+# Set-up
 
+## Libraries
+
+```{r message=FALSE, warning=FALSE}
 # Beer demand
 
   library(tidyverse)
@@ -48,7 +49,7 @@ knitr::opts_chunk$set(echo = TRUE)
   library(nleqslv)
 ```
 
-Set up:
+## Set seed:
 ```{r}
 # Set seed to 130
 
@@ -332,7 +333,7 @@ Second, *exclusion*: marginal costs must not directly affect consumer utility (r
 
 **Step 4: Extract Residuals as Unobserved Utility**
 
-```{r xi-vector}
+```{r xi-vector, fig.width=6, fig.height=4}
 # Vector ξ
 
 # Residuals from IV regression are our estimate of xi_{jt}
@@ -423,7 +424,7 @@ beer <- beer |>
 To visualise the distribution and check how many products fall in the inelastic 
 region ($|\eta| < 1$), we plot a histogram with a reference line at $-1$.
 
-```{r elast-plot, fig.height=3.5, fig.width=6}
+```{r elast-plot, fig.width=6, fig.height=4}
 hist(beer$elast_own,
      main = "Distribution of Own-Price Elasticities",
      xlab = "Own-Price Elasticity",
@@ -461,7 +462,7 @@ As a sanity check, we compare our backed-out marginal costs with the ones
 provided in the data. They should be strongly correlated if both the demand 
 model and the single-product Nash assumption are reasonable approximations.
 
-```{r mc-check}
+```{r mc-check, fig.width=6, fig.height=4}
 # Check: compare backed-out mc with mc in data
 
 cat("Correlation between backed-out and data mc:",
