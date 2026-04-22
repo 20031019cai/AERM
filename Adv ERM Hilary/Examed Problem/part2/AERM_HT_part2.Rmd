@@ -553,7 +553,7 @@ $\varepsilon_{it}$, is therefore needed to recover $\beta_L$.
 ## Q2(b) Is $l_{i,t-1}$ a good IV when $\phi = 0$?
 
 **Answer: valid but irrelevant. The 2SLS estimator is inconsistent for**
-$\beta_L$.
+$\beta_L$
 
 **1. Exogeneity**
 
@@ -723,7 +723,7 @@ under the null of zero partial correlation, centred at $1$. Any apparent
 ## Q2(c) Is $l_{i,t-1}$ a good IV when $\phi \neq 0$?
 
 **Answer: No. The IV is now relevant but invalid. The 2SLS estimator is
-inconsistent for** $\beta_L$.
+inconsistent for** $\beta_L$
 
 **Relevance**
 
@@ -764,7 +764,7 @@ because $l_{i,t-1}$ depends on
 $w_{i,t-1} = w + c_{i,t-1} + \phi\, c_{i,t-2}$ and so is correlated with
 $c_{i,t-1}$. The exclusion restriction fails, so 2SLS is inconsistent.
 
-### Simulation
+### **Simulation**
 
 Simulate under phi != 0. Pick phi = 0.5 so that wages are moderately
 MA(1) but not extreme. The rest of the DGP is unchanged
@@ -872,14 +872,14 @@ kable(results_q2c, digits = 4,
       caption = "Q2 — 2SLS point estimates across scenarios")
 ```
 
-**Reading the output.** The partial $F$ on $l_{i,t-1}$ should now be
-very large — orders of magnitude above the Staiger-Stock threshold —
+**Reading the output:** The partial $F$ on $l_{i,t-1}$ should now be
+very large, orders of magnitude above the Staiger-Stock threshold,
 confirming that the rank condition is restored when $\phi \neq 0$. But
 the 2SLS point estimate of $\beta_L$ will land noticeably away from the
 true value of $0.6$, with a tight standard error that *makes the bias
-look statistically significant*. This is the classic invalid-IV
-pathology: a precise answer to the wrong question. Taken together, Q2(b)
-and Q2(c) establish that the researcher's approach fails in both wage
-regimes — weakly in the $\phi = 0$ case, and with biased precision in
-the $\phi \neq 0$ case — and so is inconsistent for $\beta_L$ across the
-empirically relevant parameter space.
+look statistically significant*.
+
+Taken together, Q2(b) and Q2(c) establish that the researcher's approach
+fails in both wage regimes, weakly in the $\phi = 0$ case, and with
+biased precision in the $\phi \neq 0$ case, and so is inconsistent for
+$\beta_L$ across the empirically relevant parameter space.
