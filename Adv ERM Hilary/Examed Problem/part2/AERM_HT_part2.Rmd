@@ -237,8 +237,7 @@ dat_q1 <- dat_q1 %>%
   mutate(
     k_p1 = lead(k),   # k_{i,t+1} — acts as the investment-proxy
     k_m1 = lag(k),
-    k_m2 = lag(k, 2)
-  )
+    k_m2 = lag(k, 2))
 ```
 
 **Stage 1**
@@ -270,10 +269,6 @@ Under this DGP varphi is affine, but we include quadratic and interaction terms 
   bL_hat <- coef(stage1)["l"]
   bL_hat
 ```
-
-The coefficient on $l$ should land very close to the true $\beta_L = 0.6$.
-The coefficients on $k$ and $k_{t+1}$ are what will drive the discussion in
-Q1(c) — keep an eye on those.
 
 **Stage 2**
 
@@ -336,6 +331,8 @@ and the instruments are $(k_{it},\, k_{i,t-1},\, k_{i,t-2},\, y_{i,t-2},\, 1)$, 
   summary(stage2)
 ```
 
+\newpage
+
 **Results**
 
 ```{r q1b-results}
@@ -357,10 +354,10 @@ over-identifying restrictions.
 
 
 \newpage
-## Q1 (c) Is the second-stage needed?
+## Q1(c) Is the second-stage needed?
 
 **No.** Under this DGP the first-stage function $\varphi(k_{it}, k_{i,t+1})$ is
-not a generic non-linear object — it is exactly affine:
+not a generic non-linear object, it is exactly affine:
 $$\varphi(k_{it}, k_{i,t+1}) \;=\; \beta_K\, k_{it} \,+\, \tfrac{1}{\gamma}\, k_{i,t+1} \,+\, \text{const}.$$
 
 So a *linear* first stage — OLS of $\tilde v_{it}$ on $l_{it}$, $k_{it}$, and
