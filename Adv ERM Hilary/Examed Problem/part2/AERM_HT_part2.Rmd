@@ -26,23 +26,29 @@ header-includes:
 - \newunicodechar{π}{$\pi$}
 - \newunicodechar{ξ}{$\xi$}
 - \newunicodechar{ϕ}{$\phi$}
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 \newpage
+
 # Set up
 
 ## Model
 
-We consider a two-factor Cobb-Douglas value-added production function in logs:
+We consider a two-factor Cobb-Douglas value-added production function in
+logs:
 
 $$v_{it} \;=\; \beta_0 \,+\, \beta_L \, l_{it} \,+\, \beta_K \, k_{it} \,+\, a_{it}, \qquad \beta_L + \beta_K < 1$$
 
-The price of value-added is normalised to one. Labour $L_{it}$ is perfectly flexible
-and chosen in period $t$ after the firm observes total factor productivity
-$A_{it} = \exp(a_{it})$ and the wage $W_{it}$. Capital $K_{it}$ is predetermined and
-chosen in period $t-1$ to maximise expected period-$t$ profit. There are no
-adjustment costs for either input, and the underlying gross-output technology is
-Leontief in value-added and a flexible intermediate input.
+The price of value-added is normalised to one. Labour $L_{it}$ is
+perfectly flexible and chosen in period $t$ after the firm observes
+total factor productivity $A_{it} = \exp(a_{it})$ and the wage $W_{it}$.
+Capital $K_{it}$ is predetermined and chosen in period $t-1$ to maximise
+expected period-$t$ profit. There are no adjustment costs for either
+input, and the underlying gross-output technology is Leontief in
+value-added and a flexible intermediate input.
 
 ## Stochastic processes
 
@@ -52,41 +58,45 @@ $$a_{it} \;=\; \rho \, a_{i,t-1} \,+\, \xi_{it}, \qquad \xi_{it} \sim \mathrm{i.
 The log wage follows an MA(1):
 $$w_{it} \;=\; w \,+\, c_{it} \,+\, \phi \, c_{i,t-1}, \qquad c_{it} \sim \mathrm{i.i.d.}\, N(0, \sigma_c^2).$$
 
-The rental rate of capital $U$ is **fixed and common across firms and time**.
+The rental rate of capital $U$ is **fixed and common across firms and
+time**.
 
-The observed log of value-added is contaminated with classical measurement error:
+The observed log of value-added is contaminated with classical
+measurement error:
 $$\tilde v_{it} \;=\; v_{it} \,+\, \varepsilon_{it}, \qquad \varepsilon_{it} \sim \mathrm{i.i.d.}\, N(0, \sigma_\varepsilon^2).$$
 
 ## Information sets
 
-The firm's information set at $t-1$ includes $a_{i,t-1}$, $w_{i,t-1}$, $U$, and the
-fixed value-added price; it excludes $a_{it}$ and $w_{it}$. So $K_{it}$ is
-uncorrelated with $\xi_{it}$ by construction, while $L_{it}$ — chosen after
-$\xi_{it}$ is realised — is not.
+The firm's information set at $t-1$ includes $a_{i,t-1}$, $w_{i,t-1}$,
+$U$, and the fixed value-added price; it excludes $a_{it}$ and $w_{it}$.
+So $K_{it}$ is uncorrelated with $\xi_{it}$ by construction, while
+$L_{it}$ — chosen after $\xi_{it}$ is realised — is not.
 
 ## Observed data
 
-Only the input and output quantities $\bigl(\tilde V_{it} = e^{\tilde v_{it}},\, L_{it},\, K_{it}\bigr)$ are observed.
-Wages, the rental rate, intermediate inputs, investment, and TFP are all unobserved.
-This rules out the GNR labour-share estimator (no $W$), the LP/ACF intermediate-input
-proxy (no $M$), the OP investment proxy (no $I$), and the wage instrument (no $W$).
+Only the input and output quantities
+$\bigl(\tilde V_{it} = e^{\tilde v_{it}},\, L_{it},\, K_{it}\bigr)$ are
+observed. Wages, the rental rate, intermediate inputs, investment, and
+TFP are all unobserved. This rules out the GNR labour-share estimator
+(no $W$), the LP/ACF intermediate-input proxy (no $M$), the OP
+investment proxy (no $I$), and the wage instrument (no $W$).
 
 \newpage
 
 ## Calibration for the simulations
 
-| Parameter                       | Symbol            | Value                       |
-|---------------------------------|-------------------|-----------------------------|
-| Output elasticity of labour     | $\beta_L$         | 0.6                         |
-| Output elasticity of capital    | $\beta_K$         | 0.3                         |
-| AR(1) persistence of TFP        | $\rho$            | 0.5                         |
-| Variance of TFP innovation      | $\sigma_\xi^2$    | 0.05                        |
-| Mean log wage                   | $w$               | $\log(1) = 0$               |
-| Variance of wage innovation     | $\sigma_c^2$      | 0.05                        |
-| Log rental rate (fixed)         | $u$               | $\log(0.1)$                 |
-| Variance of measurement error   | $\sigma_\varepsilon^2$ | 0.1                    |
-| MA(1) wage parameter            | $\phi$            | 0 (Q1, Q2b, Q2d); 1 (Q2c)   |
-| Number of periods               | $T$               | 100,001                     |
+| Parameter | Symbol | Value |
+|-----------------------------|------------------|-------------------------|
+| Output elasticity of labour | $\beta_L$ | 0.6 |
+| Output elasticity of capital | $\beta_K$ | 0.3 |
+| AR(1) persistence of TFP | $\rho$ | 0.5 |
+| Variance of TFP innovation | $\sigma_\xi^2$ | 0.05 |
+| Mean log wage | $w$ | $\log(1) = 0$ |
+| Variance of wage innovation | $\sigma_c^2$ | 0.05 |
+| Log rental rate (fixed) | $u$ | $\log(0.1)$ |
+| Variance of measurement error | $\sigma_\varepsilon^2$ | 0.1 |
+| MA(1) wage parameter | $\phi$ | 0 (Q1, Q2b, Q2d); 1 (Q2c) |
+| Number of periods | $T$ | 100,001 |
 
 ## R Set-up
 
@@ -104,14 +114,13 @@ proxy (no $M$), the OP investment proxy (no $I$), and the wage instrument (no $W
   set.seed(1234)
 ```
 
-
 ## Reusable simulation function
 
-To keep the rest of the document concise, we wrap the DGP in a single function.
-It takes the two switches we toggle across questions ($\phi$ and `urndvar`) plus
-the standard parameters, and returns a data frame with the variables we will use:
-$\tilde v$, $l$, $k$, plus their lags and (for diagnostic purposes) the latent
-$a$ and $w$.
+To keep the rest of the document concise, we wrap the DGP in a single
+function. It takes the two switches we toggle across questions ($\phi$
+and `urndvar`) plus the standard parameters, and returns a data frame
+with the variables we will use: $\tilde v$, $l$, $k$, plus their lags
+and (for diagnostic purposes) the latent $a$ and $w$.
 
 ```{r sim-function}
 simulate_pf <- function(obs   = 100001,
@@ -173,9 +182,9 @@ simulate_pf <- function(obs   = 100001,
 ```
 
 A quick sanity check that the simulation matches the assumed DGP (the
-infeasible OLS regression of $\tilde v$ on $l$, $k$, and the true $a$ should
-recover $(\beta_0, \beta_L, \beta_K)$ up to sampling error) while feasible OLS
-omitting $a$ should not.
+infeasible OLS regression of $\tilde v$ on $l$, $k$, and the true $a$
+should recover $(\beta_0, \beta_L, \beta_K)$ up to sampling error) while
+feasible OLS omitting $a$ should not.
 
 ```{r sim-check}
 dat0 <- simulate_pf(phi = 0)
@@ -189,46 +198,69 @@ dat0 <- simulate_pf(phi = 0)
   summary(lm(vt ~ l + k,    data = dat0))$coefficients
 ```
 
-If the infeasible OLS coefficients land near $(\beta_L, \beta_K) = (0.6, 0.3)$
-and the feasible OLS does not, the DGP is correctly implemented.
+If the infeasible OLS coefficients land near
+$(\beta_L, \beta_K) = (0.6, 0.3)$ and the feasible OLS does not, the DGP
+is correctly implemented.
 
 \newpage
-# Question 1 
 
-Throughout Q1 we impose $\phi = 0$, that means the log wage is i.i.d. across firms and time.
+# Question 1
+
+Throughout Q1 we impose $\phi = 0$, that means the log wage is i.i.d.
+across firms and time.
 
 ## Q1(a) Two-stage procedure
 
-**Capital as proxy for past TFP.** With $U$ fixed, $\phi = 0$, and no adjustment costs, the FOC for capital combined with the AR(1) for $a$ gives an *exactly* log-linear capital decision rule:
+**Capital as proxy for past TFP.** With $U$ fixed, $\phi = 0$, and no
+adjustment costs, the FOC for capital combined with the AR(1) for $a$
+gives an *exactly* log-linear capital decision rule:
 
 $$k_{it} \;=\; \kappa_0 \,+\, \gamma\, a_{i,t-1}, \qquad \gamma \;=\; \frac{\rho}{1-\beta_L-\beta_K}.$$
 
-The map is invertible, so $a_{i,t-1} = (k_{it}-\kappa_0)/\gamma \equiv g(k_{it})$, capital alone is a sufficient statistic for past productivity.
+The map is invertible, so
+$a_{i,t-1} = (k_{it}-\kappa_0)/\gamma \equiv g(k_{it})$, capital alone
+is a sufficient statistic for past productivity.
 
-**First stage: Olley–Pakes style ($\beta_L$)**
+**First stage: Olley–Pakes style (**$\beta_L$)
 
-Replacing $a_{it} = \rho\, g(k_{it}) + \xi_{it}$ in the production function gives
+Replacing $a_{it} = \rho\, g(k_{it}) + \xi_{it}$ in the production
+function gives
 $$\tilde v_{it} \;=\; \beta_L\, l_{it} \,+\, \varphi(k_{it}) \,+\, \xi_{it} \,+\, \varepsilon_{it}, \qquad \varphi(k_{it}) \equiv \beta_0 + \beta_K k_{it} + \rho\, g(k_{it}).$$
-We estimate by OLS regression of $\tilde v_{it}$ on $l_{it}$ and a polynomial in $k_{it}$, and read $\hat\beta_L$ off the coefficient on $l_{it}$. Following the OP (1996) argument: conditional on $k_{it}$, identifying variation in $l_{it}$ comes from the i.i.d. wage shock $w_{it}$, which by construction is independent of $\xi_{it}$ and $\varepsilon_{it}$. The "serially uncorrelated wage" condition that OP requires is delivered here by $\phi = 0$, and the "no firm-level variation in the user cost" condition is delivered by $U$ being fixed.
+We estimate by OLS regression of $\tilde v_{it}$ on $l_{it}$ and a
+polynomial in $k_{it}$, and read $\hat\beta_L$ off the coefficient on
+$l_{it}$. Following the OP (1996) argument: conditional on $k_{it}$,
+identifying variation in $l_{it}$ comes from the i.i.d. wage shock
+$w_{it}$, which by construction is independent of $\xi_{it}$ and
+$\varepsilon_{it}$. The "serially uncorrelated wage" condition that OP
+requires is delivered here by $\phi = 0$, and the "no firm-level
+variation in the user cost" condition is delivered by $U$ being fixed.
 
-**Second stage: Blundell–Bond dynamic GMM ($\beta_K$)**
+**Second stage: Blundell–Bond dynamic GMM (**$\beta_K$)
 
-Form the cleaned dependent variable $y_{it} \equiv \tilde v_{it} - \hat\beta_L\, l_{it}$, which is consistent for $\beta_0 + \beta_K k_{it} + a_{it} + \varepsilon_{it}$. Quasi-differencing using the AR(1) yields
+Form the cleaned dependent variable
+$y_{it} \equiv \tilde v_{it} - \hat\beta_L\, l_{it}$, which is
+consistent for $\beta_0 + \beta_K k_{it} + a_{it} + \varepsilon_{it}$.
+Quasi-differencing using the AR(1) yields
 $$y_{it} \,-\, \rho\, y_{i,t-1} \;=\; \beta_0(1-\rho) \,+\, \beta_K\bigl(k_{it} - \rho\, k_{i,t-1}\bigr) \,+\, \xi_{it} \,+\, \varepsilon_{it} - \rho\,\varepsilon_{i,t-1}.$$
 
 Estimate $(\beta_K, \rho)$ jointly by non-linear GMM with instruments
 $$z_{it} \;=\; (1,\, k_{it},\, k_{i,t-1},\, k_{i,t-2},\, y_{i,t-2}).$$
 
-- *Validity:* $k_{i,t-s}$ for $s \ge 0$ lies in the firm's information set at $t-1$ and is therefore orthogonal to $\xi_{it}$; $k_{i,t-2}$ and $y_{i,t-2}$ are dated before $t-1$ and so also orthogonal to $\varepsilon_{i,t-1}$. 
+-   *Validity:* $k_{i,t-s}$ for $s \ge 0$ lies in the firm's information
+    set at $t-1$ and is therefore orthogonal to $\xi_{it}$; $k_{i,t-2}$
+    and $y_{i,t-2}$ are dated before $t-1$ and so also orthogonal to
+    $\varepsilon_{i,t-1}$.
 
-- *Relevance:* the AR(1) persistence in $a_{it}$ induces serial correlation in $k$ and $y$, so the instruments are correlated with the endogenous regressors.
-
+-   *Relevance:* the AR(1) persistence in $a_{it}$ induces serial
+    correlation in $k$ and $y$, so the instruments are correlated with
+    the endogenous regressors.
 
 \newpage
+
 ## Q1(b) Simulation and two-stage estimation
 
-Simulate under the Q1 DGP ($\phi = 0$, $U$ fixed) and build the leads and lags
-needed for both stages.
+Simulate under the Q1 DGP ($\phi = 0$, $U$ fixed) and build the leads
+and lags needed for both stages.
 
 ```{r q1b-setup}
 dat_q1 <- simulate_pf(phi = 0, urndvar = 0)
@@ -242,16 +274,18 @@ dat_q1 <- dat_q1 %>%
 
 **Stage 1**
 
-Run the OP first-stage regression to recover $\beta_L$. We use a second-order polynomial in
-$(k_{it}, k_{i,t+1})$, which is general enough to handle nonlinear
-$\varphi$ in principle; under this DGP the higher-order terms should come out
-near zero.
- 
+Run the OP first-stage regression to recover $\beta_L$. We use a
+second-order polynomial in $(k_{it}, k_{i,t+1})$, which is general
+enough to handle nonlinear $\varphi$ in principle; under this DGP the
+higher-order terms should come out near zero.
+
 The model is:
 
 $$\tilde v_{it} = \beta_L * l_{it} + \varphi(k_{it}, k_{t+1}) + \epsilon_{it}$$
 
-Under this DGP varphi is affine, but we include quadratic and interaction terms as a hedge, they should come out near zero, which is the point we will exploit in Q1(c).
+Under this DGP varphi is affine, but we include quadratic and
+interaction terms as a hedge, they should come out near zero, which is
+the point we will exploit in Q1(c).
 
 ```{r q1b-stage1}
 # Fit the first-stage regression of log value-added on labour plus a
@@ -270,15 +304,21 @@ Under this DGP varphi is affine, but we include quadratic and interaction terms 
   bL_hat
 ```
 
+\newpage
+
 **Stage 2**
 
-Form the cleaned dependent variable $y_{it} = \tilde v_{it} - \hat\beta_L\, l_{it}$ and run Blundell–Bond dynamic GMM to recover $\beta_K$ and $\rho$.
+Form the cleaned dependent variable
+$y_{it} = \tilde v_{it} - \hat\beta_L\, l_{it}$ and run Blundell–Bond
+dynamic GMM to recover $\beta_K$ and $\rho$.
 
 The moment function:
 
 $$u_{it} \;=\; y_{it} - \rho\, y_{i,t-1} - \beta_K (k_{it} - \rho\, k_{i,t-1}) - \beta_0(1 - \rho),$$
 
-and the instruments are $(k_{it},\, k_{i,t-1},\, k_{i,t-2},\, y_{i,t-2},\, 1)$, five moments for three parameters, so the system is over-identified.
+and the instruments are
+$(k_{it},\, k_{i,t-1},\, k_{i,t-2},\, y_{i,t-2},\, 1)$, five moments for
+three parameters, so the system is over-identified.
 
 ```{r q1b-stage2}
 # ---------------------------------------------------------------------
@@ -348,62 +388,68 @@ kable(results_q1, digits = 3,
       caption = "Q1(b) — Two-stage estimates vs. true values")
 ```
 
-With $T = 100{,}001$ all three estimates should be within two decimal places of
-the truth. The Hansen $J$ statistic reported by `gmm()` should not reject the
-over-identifying restrictions.
-
+With $T = 100{,}001$ all three estimates should be within two decimal
+places of the truth. The Hansen $J$ statistic reported by `gmm()` should
+not reject the over-identifying restrictions.
 
 \newpage
+
 ## Q1(c) Is the second-stage needed?
 
-**No.** Under this DGP the first-stage function $\varphi(k_{it}, k_{i,t+1})$ is
-not a generic non-linear object, it is exactly affine:
+**No.** Under this DGP the first-stage function
+$\varphi(k_{it}, k_{i,t+1})$ is not a generic non-linear object, it is
+exactly affine:
 $$\varphi(k_{it}, k_{i,t+1}) \;=\; \beta_K\, k_{it} \,+\, \tfrac{1}{\gamma}\, k_{i,t+1} \,+\, \text{const}.$$
 
-So a *linear* first stage — OLS of $\tilde v_{it}$ on $l_{it}$, $k_{it}$, and
-$k_{i,t+1}$ — identifies $\beta_L$ *and* $\beta_K$ in a single regression, as
-the coefficients on $l_{it}$ and $k_{it}$ respectively. The second stage is
-redundant.
+So a *linear* first stage — OLS of $\tilde v_{it}$ on $l_{it}$,
+$k_{it}$, and $k_{i,t+1}$ — identifies $\beta_L$ *and* $\beta_K$ in a
+single regression, as the coefficients on $l_{it}$ and $k_{it}$
+respectively. The second stage is redundant.
 
 Three features of the DGP combine to make $\varphi$ affine rather than
 genuinely non-linear:
 
-1. **No adjustment costs for capital.** The capital Euler equation does not
-   involve lagged capital as an additional state, so the policy function for
-   $k_{i,t+1}$ is log-linear in $a_{it}$ rather than a non-trivial function of
-   multiple states.
+1.  **No adjustment costs for capital.** The capital Euler equation does
+    not involve lagged capital as an additional state, so the policy
+    function for $k_{i,t+1}$ is log-linear in $a_{it}$ rather than a
+    non-trivial function of multiple states.
 
-2. **User cost $U$ fixed across firms.** No firm-level $u_{it}$ enters the
-   capital rule, so $k_{i,t+1}$ depends on $a_{it}$ alone — not on the pair
-   $(a_{it}, u_{it})$.
+2.  **User cost** $U$ fixed across firms. No firm-level $u_{it}$ enters
+    the capital rule, so $k_{i,t+1}$ depends on $a_{it}$ alone — not on
+    the pair $(a_{it}, u_{it})$.
 
-3. **$\phi = 0$.** Wage innovations are i.i.d., so lagged $c_{i,t-1}$ does not
-   forecast $w_{it}$ and therefore does not feed into the period-$t$ choice of
-   $k_{i,t+1}$ via rational expectations of next period's wage.
+3.  $\phi = 0$. Wage innovations are i.i.d., so lagged $c_{i,t-1}$ does
+    not forecast $w_{it}$ and therefore does not feed into the
+    period-$t$ choice of $k_{i,t+1}$ via rational expectations of next
+    period's wage.
 
 Together these deliver $k_{i,t+1} = \kappa_0 + \gamma\, a_{it}$, exactly
-invertible in $k_{i,t+1}$. Substituting back into the production function
-yields the affine $\varphi$ above, with $\beta_K$ appearing cleanly as the
-coefficient on $k_{it}$ (its direct structural role) and $1/\gamma$ as the
-coefficient on $k_{i,t+1}$ (the inverse of the capital rule's sensitivity to
-$a_{it}$).
+invertible in $k_{i,t+1}$. Substituting back into the production
+function yields the affine $\varphi$ above, with $\beta_K$ appearing
+cleanly as the coefficient on $k_{it}$ (its direct structural role) and
+$1/\gamma$ as the coefficient on $k_{i,t+1}$ (the inverse of the capital
+rule's sensitivity to $a_{it}$).
 
-**A sharper observation.** Not only is the second stage unnecessary — the
-*standard* OP second stage is under-identified here. In the OP formulation,
-one would regress $y_{it} = \tilde v_{it} - \hat\beta_L l_{it}$ on $k_{it}$
-and a flexible function $h(k_{i,t-1}, k_{it})$ capturing $\rho\, a_{i,t-1}$.
-Under the exact log-linear capital rule, $h$ collapses to a linear function
-of $k_{it}$ (and $k_{i,t-1}$), and the OP second stage loses rank: it only
-identifies the sum $\beta_K + \rho/\gamma = 1 - \beta_L$, not $\beta_K$ and
-$\rho$ separately. This is the Bond–Söderbom (2005) non-identification
-result. The BB-style second stage used in Q1(b) avoids the collapse by
-exploiting over-identifying moments from $k_{i,t-2}$ and $y_{i,t-2}$, which is
-why it continues to work — but at that point we are no longer using the OP
-second stage in any recognisable form.
+**A sharper observation.** Not only is the second stage unnecessary —
+the *standard* OP second stage is under-identified here. In the OP
+formulation, one would regress
+$y_{it} = \tilde v_{it} - \hat\beta_L l_{it}$ on $k_{it}$ and a flexible
+function $h(k_{i,t-1}, k_{it})$ capturing $\rho\, a_{i,t-1}$. Under the
+exact log-linear capital rule, $h$ collapses to a linear function of
+$k_{it}$ (and $k_{i,t-1}$), and the OP second stage loses rank: it only
+identifies the sum $\beta_K + \rho/\gamma = 1 - \beta_L$, not $\beta_K$
+and $\rho$ separately. This is the Bond–Söderbom (2005)
+non-identification result. The BB-style second stage used in Q1(b)
+avoids the collapse by exploiting over-identifying moments from
+$k_{i,t-2}$ and $y_{i,t-2}$, which is why it continues to work — but at
+that point we are no longer using the OP second stage in any
+recognisable form.
 
 ### Numerical confirmation
 
-*Linear first stage:* Under this DGP varphi is affine, so no polynomial terms are needed: a simple OLS of vt on (`l`, `k`, `k_{t+1}`) delivers $\beta_L$ and $\beta_K$ (and $1/\gamma$ as a bonus) in one shot.
+*Linear first stage:* Under this DGP varphi is affine, so no polynomial
+terms are needed: a simple OLS of vt on (`l`, `k`, `k_{t+1}`) delivers
+$\beta_L$ and $\beta_K$ (and $1/\gamma$ as a bonus) in one shot.
 
 ```{r q1c-linear-first-stage}
 # Fit the linear first stage with just labour, capital, and next-period capital
@@ -417,12 +463,15 @@ second stage in any recognisable form.
   round(summary(stage1_lin)$coefficients, 4)
 ```
 
-Expected against the calibration: the coefficient on `l` $\approx \beta_L = 0.6$;
-the coefficient on `k` $\approx \beta_K = 0.3$ (read directly from Stage 1,
-matching the Q1(b) BB-GMM estimate); the coefficient on `k_p1`
-$\approx 1/\gamma = 0.2$, since $\gamma = \rho/(1-\beta_L-\beta_K) = 5$.
+Expected against the calibration: the coefficient on `l`
+$\approx \beta_L = 0.6$; the coefficient on `k` $\approx \beta_K = 0.3$
+(read directly from Stage 1, matching the Q1(b) BB-GMM estimate); the
+coefficient on `k_p1` $\approx 1/\gamma = 0.2$, since
+$\gamma = \rho/(1-\beta_L-\beta_K) = 5$.
 
-*Sanity check:* the coefficient on $k_{t+1}$ in the linear first stage should numerically equal $1/\gamma$ computed from the structural parameters. This confirms the affine decomposition of varphi.
+*Sanity check:* the coefficient on $k_{t+1}$ in the linear first stage
+should numerically equal $1/\gamma$ computed from the structural
+parameters. This confirms the affine decomposition of varphi.
 
 ```{r q1c-gamma-check}
 # Calibration values, taken from the Setup section
@@ -442,7 +491,9 @@ $\approx 1/\gamma = 0.2$, since $\gamma = \rho/(1-\beta_L-\beta_K) = 5$.
     `k_p1 coefficient (OLS)`     = as.numeric(coef(stage1_lin)["k_p1"]))
 ```
 
-*Final check*: in the polynomial first stage from Q1(b), the quadratic and interaction terms should have coefficients numerically indistinguishable from zero,  i.e. varphi has no curvature in this DGP.
+*Final check*: in the polynomial first stage from Q1(b), the quadratic
+and interaction terms should have coefficients numerically
+indistinguishable from zero, i.e. varphi has no curvature in this DGP.
 
 ```{r q1c-polynomial-terms}
 # Extract the estimated coefficients on k^2, k_{t+1}^2, and k * k_{t+1}
@@ -453,28 +504,220 @@ $\approx 1/\gamma = 0.2$, since $\gamma = \rho/(1-\beta_L-\beta_K) = 5$.
                                        "I(k * k_p1)"), 1:2], 5)
 ```
 
-If these three coefficients are (a) small in magnitude and (b) statistically
-indistinguishable from zero, we have a direct numerical confirmation that
-$\varphi$ is affine under this DGP — and hence that the first-stage
-specification alone identifies both $\beta_L$ and $\beta_K$ consistently,
-with no second stage required.
+If these three coefficients are (a) small in magnitude and (b)
+statistically indistinguishable from zero, we have a direct numerical
+confirmation that $\varphi$ is affine under this DGP — and hence that
+the first-stage specification alone identifies both $\beta_L$ and
+$\beta_K$ consistently, with no second stage required.
 
 \newpage
+
 # Question 2
 
+The researcher substitutes $a_{it} = \rho\, a_{i,t-1} + \xi_{it}$ into
+the production function and treats $a_{i,t-1}$ with a control function
+$h(k_{it}, k_{i,t-1})$, giving the estimating equation
 
+$$\tilde v_{it} \;=\; \beta_0 \,+\, \beta_L\, l_{it} \,+\, \beta_K\, k_{it} \,+\, \rho\, h(k_{it}, k_{i,t-1}) \,+\, \xi_{it} \,+\, \varepsilon_{it}, \tag{$\star$}$$
 
-## Q2 (a)
+and estimates $(\beta_0, \beta_L, \beta_K)$ jointly by 2SLS, treating
+$l_{it}$ as the single endogenous regressor and using $l_{i,t-1}$ as the
+outside instrument.
+
+## Q2(a) Why is an outside instrument needed for $l_{it}$?
+
+Labour is chosen at $t$ after the firm has observed $a_{it}$ (and the
+wage shock $w_{it}$). The log-labour FOC in the setup gives
+
+$$l_{it} \;=\; \text{pow}\cdot\bigl[\log\beta_L \,+\, \beta_0 \,+\, \beta_K k_{it} \,+\, a_{it} \,-\, w_{it}\bigr], \qquad \text{pow} \equiv \frac{1}{1-\beta_L}.$$
+
+Decomposing $a_{it} = \rho\, a_{i,t-1} + \xi_{it}$, this becomes
+
+$$l_{it} \;=\; \text{pow}\cdot\bigl[\log\beta_L \,+\, \beta_0 \,+\, \beta_K k_{it} \,+\, \rho\, a_{i,t-1} \,-\, w_{it}\bigr] \,+\, \text{pow}\cdot \xi_{it}.$$
+So $l_{it}$ is a linear function of the period-$t$ TFP innovation
+$\xi_{it}$ with coefficient $\text{pow} > 0$.
+
+In equation $(\star)$, the composite disturbance is
+$\xi_{it} + \varepsilon_{it}$, and
+$$\mathrm{Cov}(l_{it},\, \xi_{it} + \varepsilon_{it} \mid k_{it}, k_{i,t-1}) \;=\; \text{pow}\cdot \sigma_\xi^2 \;>\; 0.$$
+
+OLS on $(\star)$ is therefore inconsistent for $\beta_L$, ie. the
+classic "transmission bias". Controlling for $h(k_{it}, k_{i,t-1})$ does
+not fix the problem because $h$ only absorbs $a_{i,t-1}$; the period-$t$
+innovation $\xi_{it}$ remains in the residual and is positively
+correlated with $l_{it}$. An outside instrument, which is something
+correlated with $l_{it}$ but orthogonal to $\xi_{it}$ and
+$\varepsilon_{it}$, is therefore needed to recover $\beta_L$.
 
 \newpage
-## Q2 (b)
+
+## Q2(b) Is $l_{i,t-1}$ a good IV when $\phi = 0$?
+
+**Answer: valid but irrelevant. The 2SLS estimator is inconsistent for**
+$\beta_L$.
+
+**1. Exogeneity**
+
+$l_{i,t-1}$ is chosen at date $t-1$ and is therefore a function of the
+information set
+$\mathcal{I}_{i,t-1} = \{a_{i,t-1}, w_{i,t-1}, k_{i,t-1}\}$. Both
+$\xi_{it}$ (a period-$t$ TFP innovation) and $\varepsilon_{it}$ (i.i.d.
+measurement error) are independent of $\mathcal{I}_{i,t-1}$, so
+$$\mathrm{Cov}\bigl(l_{i,t-1},\, \xi_{it} + \varepsilon_{it}\bigr) \;=\; 0.$$
+The exclusion restriction holds.
+
+**2. Relevance**
+
+Take the labour FOCs at $t$ and $t-1$ and subtract off everything held
+fixed by the 2SLS controls $(k_{it}, k_{i,t-1})$. Under the exact
+log-linear capital rule, $k_{it} = \kappa_0 + \gamma\, a_{i,t-1}$, so
+conditioning on $k_{it}$ already pins down $a_{i,t-1}$. Residual
+variation in $l_{i,t-1}$ given the controls is therefore
+$$l_{i,t-1} \,-\, \mathbb{E}[l_{i,t-1} \mid k_{it}, k_{i,t-1}] \;=\; -\,\text{pow}\cdot w_{i,t-1},$$
+while residual variation in $l_{it}$ is
+
+$$l_{it} \,-\, \mathbb{E}[l_{it} \mid k_{it}, k_{i,t-1}] \;=\; \text{pow}\cdot(\xi_{it} - w_{it})$$
+So the relevant covariance is
+
+$$\mathrm{Cov}(l_{i,t-1}, l_{it} \mid k_{it}, k_{i,t-1}) \;=\; \text{pow}^2\cdot \mathrm{Cov}(-w_{i,t-1},\, \xi_{it} - w_{it}) \;=\; 0,$$
+
+because under $\phi = 0$ the wage is i.i.d. over time
+($w_{i,t-1} \perp w_{it}$) and independent of TFP innovations
+($w_{i,t-1} \perp \xi_{it}$). The rank condition fails: $l_{i,t-1}$ is
+**irrelevant** given the controls, so 2SLS is inconsistent.
+
+**Simulation**
+
+Simulate under phi = 0 and run the researcher's 2SLS with $l_{t-1}$ as
+the outside instrument for $l_t$.
+
+```{r q2b-setup}
+# ---------------------------------------------------------------------
+# Controls: k_t and k_{t-1} (standing in for the linear collapse of
+# beta_K k_t + rho h(k_t, k_{t-1}) under this DGP)
+
+# Endogenous: l_t
+# Outside IV: l_{t-1}
+
+# Expectation: partial F-stat on l_{t-1} in the first stage should be
+# small (close to 1); 2SLS point estimate of beta_L should be far from
+# 0.6 with a large standard error — the fingerprint of weak-IV failure.
+# ---------------------------------------------------------------------
+
+# Add the lagged labour variable as the outside instrument
+dat_q2b <- dat_q1 %>%
+  mutate(l_m1 = lag(l))
+```
+
+```{r q2b-firststage}
+# ---------------------------------------------------------------------
+# First-stage OLS: regress l_t on the outside IV plus the controls.
+# Under phi = 0 the partial coefficient on l_m1 should be
+# statistically indistinguishable from zero.
+# ---------------------------------------------------------------------
+
+# Fit the first-stage regression
+  
+  fs_q2b <- lm(l ~ l_m1 + k + k_m1,
+               data = dat_q2b, na.action = na.exclude)
+
+# Table 1: coefficient on the excluded instrument l_{t-1}
+
+  kable(
+    summary(fs_q2b)$coefficients["l_m1", , drop = FALSE],
+    digits = 4,
+    caption = "Q2(b) first-stage — coefficient on the outside instrument $l_{i,t-1}$"
+  )
+
+# Partial F-statistic on the single excluded instrument
+# (with one IV this is simply the t-stat squared)
+  
+  fs_t_q2b <- summary(fs_q2b)$coefficients["l_m1", "t value"]
+  fs_F_q2b <- fs_t_q2b^2
+
+# Table 2: weak-IV diagnostic summary
+    
+  kable(
+    data.frame(
+      Quantity = c("Partial F-stat on $l_{i,t-1}$",
+                   "Staiger-Stock critical value",
+                   "Diagnosis"),
+      Value    = c(sprintf("%.3f", fs_F_q2b),
+                   "10.000",
+                   ifelse(fs_F_q2b < 10, "Weak IV (F < 10)", "Strong IV"))
+    ),
+    caption = "Q2(b) first-stage weak-instrument diagnostic"
+  )
+```
+
+```{r q2b-iv}
+# ---------------------------------------------------------------------
+# Run the researcher's 2SLS.  Expected: a point estimate of beta_L
+# that is (a) far from the true 0.6 and/or (b) has a very wide
+# confidence interval — the classic weak-IV pathology.
+# ---------------------------------------------------------------------
+
+# AER::ivreg syntax: response ~ regressors | instruments
+# l is endogenous, (k, k_m1) are included exogenous regressors,
+# l_m1 is the excluded instrument
+  
+  iv_q2b <- ivreg(vt ~ l + k + k_m1 | l_m1 + k + k_m1, data = dat_q2b)
+  iv_sum  <- summary(iv_q2b, diagnostics = TRUE)
+
+# Table 1: 2SLS coefficient estimates
+
+  kable(
+    iv_sum$coefficients,
+    digits = 4,
+    caption = "Q2(b) 2SLS coefficient estimates"
+  )
+
+# Table 2: diagnostic tests — weak IV, Wu-Hausman endogeneity, Sargan over-id.
+# (Sargan is NA here because the system is exactly identified: 1 IV for 1
+# endogenous variable.)
+  
+  kable(
+    iv_sum$diagnostics,
+    digits = 4,
+    caption = "Q2(b) 2SLS diagnostic tests"
+  )
+```
+
+Compare the researcher's 2SLS estimate of beta_L to the truth and to the
+consistent Q1(b) estimate.
+
+```{r q2b-summary}
+results_q2b <- data.frame(
+  Estimator = c("Truth",
+                "Q1(b) Stage 1 (valid)",
+                "Q2 2SLS with l_{t-1} (weak IV)"),
+  beta_L    = c(0.6,
+                as.numeric(bL_hat),
+                as.numeric(coef(iv_q2b)["l"]))
+)
+
+kable(results_q2b, digits = 4,
+             caption = "Q2(b) — Weak-IV failure under phi = 0")
+```
+
+**Results**
+
+The first-stage table reports a partial $F$-statistic on $l_{i,t-1}$ of
+only $0.358$. This is a tiny fraction of the Staiger-Stock threshold of
+$10$, exactly matching the theoretical prediction that the conditional
+correlation is zero in population.
+
+The 2SLS point estimate for $\beta_L$ is $0.7950$, with a standard error
+of $0.7474$ and a $t$-statistic of just $1.06$, i.e. statistically
+indistinguishable from zero, and with a 95% confidence interval easily
+wide enough to contain any value between roughly $-0.67$ and $2.26$.
+Algebraically the estimator returns a number, but it does not point at
+$\beta_L$ in any meaningful sense, because the instrument and the
+endogenous regressor are conditionally uncorrelated. With one excluded
+instrument the partial $F$ is asymptotically distributed $F(1, T-k)$
+under the null of zero partial correlation, centred at $1$. Any apparent
+"estimate" of $\beta_L$ is an artefact of finite-sample noise.
 
 \newpage
+
 ## Q2 (c)
-
-
-
-
-
-
-
