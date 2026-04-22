@@ -284,8 +284,7 @@ The model is:
 $$\tilde v_{it} = \beta_L * l_{it} + \varphi(k_{it}, k_{t+1}) + \epsilon_{it}$$
 
 Under this DGP varphi is affine, but we include quadratic and
-interaction terms as a hedge, they should come out near zero, which is
-the point we will exploit in Q1(c).
+interaction terms as a hedge, they should come out near zero.
 
 ```{r q1b-stage1}
 # Fit the first-stage regression of log value-added on labour plus a
@@ -611,7 +610,8 @@ dat_q2b <- dat_q1 %>%
 
 ```{r q2b-firststage}
 # ---------------------------------------------------------------------
-# First-stage OLS: regress l_t on the outside IV plus the controls.
+# First-stage OLS: regress l_t on the outside IV plus the controls
+
 # Under phi = 0 the partial coefficient on l_m1 should be
 # statistically indistinguishable from zero.
 # ---------------------------------------------------------------------
@@ -720,4 +720,166 @@ under the null of zero partial correlation, centred at $1$. Any apparent
 
 \newpage
 
-## Q2 (c)
+## Q2(c) Is $l_{i,t-1}$ a good IV when $\phi \neq 0$?
+
+**Answer: No. The IV is now relevant but invalid. The 2SLS estimator is
+inconsistent for** $\beta_L$.
+
+**Relevance**
+
+With $\phi \neq 0$ the wage follows an MA(1):
+$w_{it} = w + c_{it} + \phi\, c_{i,t-1}$. Both $w_{i,t-1}$ and $w_{it}$
+load on the shock $c_{i,t-1}$ — the former directly, the latter via the
+moving-average coefficient, so
+$$\mathrm{Cov}(w_{i,t-1}, w_{it}) \;=\; \phi\, \sigma_c^2 \;\neq\; 0.$$
+
+From the labour FOC, $l_{it}$ and $l_{i,t-1}$ inherit this correlation
+through the $-\text{pow}\cdot w$ term, and the correlation survives
+conditioning on $(k_{it}, k_{i,t-1})$. The first-stage partial $F$
+should now be large.
+
+**Invalidity**
+
+When $\phi \neq 0$, the period-$t$ choice of next-period capital depends
+on the *expected* future wage,
+$$\mathbb{E}[w_{i,t+1} \mid \mathcal{I}_{it}] \;=\; w \,+\, \phi\, c_{it},$$
+so the capital rule picks up an extra state:
+$$k_{i,t+1} \;=\; \kappa_0 \,+\, \gamma\, a_{it} \,+\, \delta\, c_{it}, \qquad \delta \;=\; -\phi\, \beta_L \cdot \text{pow} \,/\, (1 - \beta_L - \beta_K),$$
+with $\delta < 0$ (a higher $c_{it}$ raises the expected wage next
+period, depressing labour and therefore the marginal product of
+capital). Lagged one period:
+$k_{it} = \kappa_0 + \gamma\, a_{i,t-1} + \delta\, c_{i,t-1}$.
+
+The researcher's control function $h(k_{it}, k_{i,t-1})$ is therefore
+**misspecified**: one observed capital is a two-state object
+($a_{i,t-1}$ and $c_{i,t-1}$), so no function of $(k_{it}, k_{i,t-1})$
+alone can recover $a_{i,t-1}$. The best-linear-predictor error
+$$\eta_{i,t-1} \;\equiv\; a_{i,t-1} \,-\, h(k_{it}, k_{i,t-1})$$ is not
+identically zero, and it is mechanically correlated with $c_{i,t-1}$,
+because $c_{i,t-1}$ is the piece of $k_{it}$ that the control function
+misattributes to $a_{i,t-1}$. The residual in the researcher's equation
+therefore contains $\rho\, \eta_{i,t-1}$, giving
+$$\mathrm{Cov}(l_{i,t-1},\, \xi_{it} + \varepsilon_{it} + \rho\, \eta_{i,t-1}) \;=\; \rho\,\mathrm{Cov}(l_{i,t-1},\, \eta_{i,t-1}) \;\neq\; 0,$$
+because $l_{i,t-1}$ depends on
+$w_{i,t-1} = w + c_{i,t-1} + \phi\, c_{i,t-2}$ and so is correlated with
+$c_{i,t-1}$. The exclusion restriction fails, so 2SLS is inconsistent.
+
+### Simulation
+
+Simulate under phi != 0. Pick phi = 0.5 so that wages are moderately
+MA(1) but not extreme. The rest of the DGP is unchanged
+
+```{r q2c-setup}
+# ---------------------------------------------------------------------
+# Expectation:
+#  - Partial F on l_{t-1} is LARGE (relevance is now satisfied)
+#  - The 2SLS point estimate of beta_L is precisely estimated but
+#    biased away from 0.6 (invalidity)
+# ---------------------------------------------------------------------
+
+# Simulate a fresh dataset under phi = 0.5
+dat_q2c <- simulate_pf(phi = 0.5, urndvar = 0) %>%
+  mutate(
+    l_m1 = lag(l),   # outside instrument for l_t
+    k_m1 = lag(k)    # included exogenous regressor
+  )
+```
+
+```{r q2c-firststage}
+# ---------------------------------------------------------------------
+# First-stage OLS — regress l_t on the outside IV plus controls
+
+# Unlike the phi = 0 case, the partial coefficient on l_m1 should be
+# large and highly significant
+# ---------------------------------------------------------------------
+
+# Fit the first stage
+  
+  fs_q2c <- lm(l ~ l_m1 + k + k_m1,
+               data = dat_q2c, na.action = na.exclude)
+
+# Table 1: coefficient on the excluded instrument
+
+  kable(
+    summary(fs_q2c)$coefficients["l_m1", , drop = FALSE],
+    digits = 4,
+    caption = "Q2(c) first-stage — coefficient on $l_{i,t-1}$ under $\\phi = 0.5$"
+  )
+
+# Partial F-statistic on l_m1 (t-stat squared since 1 excluded IV)
+  
+  fs_t_q2c <- summary(fs_q2c)$coefficients["l_m1", "t value"]
+  fs_F_q2c <- fs_t_q2c^2
+
+# Table 2: weak-IV diagnostic summary
+
+  kable(
+    data.frame(
+      Quantity = c("Partial F-stat on $l_{i,t-1}$",
+                   "Staiger-Stock critical value",
+                   "Diagnosis"),
+      Value    = c(sprintf("%.3f", fs_F_q2c),
+                   "10.000",
+                   ifelse(fs_F_q2c < 10, "Weak IV (F < 10)", "Strong IV"))
+    ),
+    caption = "Q2(c) first-stage strength diagnostic"
+  )
+```
+
+```{r q2c-iv}
+# ---------------------------------------------------------------------
+# Researcher's 2SLS under phi = 0.5
+
+# Expected: a tight standard error on beta_L (because the IV is now relevant), 
+# but a biased point estimate (because the IV is correlated with the residual 
+# through c_{t-1})
+# ---------------------------------------------------------------------
+
+  iv_q2c  <- ivreg(vt ~ l + k + k_m1 | l_m1 + k + k_m1, data = dat_q2c)
+  iv_sum_q2c <- summary(iv_q2c, diagnostics = TRUE)
+
+# Table 1: 2SLS coefficient estimates
+
+  kable(
+    iv_sum_q2c$coefficients,
+    digits = 4,
+    caption = "Q2(c) 2SLS coefficient estimates"
+  )
+
+# Table 2: diagnostic tests (Sargan is NA — system is exactly identified)
+  
+  kable(
+    iv_sum_q2c$diagnostics,
+    digits = 4,
+    caption = "Q2(c) 2SLS diagnostic tests"
+  )
+```
+
+Compare: true $\beta_L$, the $\phi = 0$ 2SLS (weak-IV failure from
+Q2(b)), and the $\phi = 0.5$ 2SLS (invalid-IV failure in this part)
+
+```{r q2c-summary}
+  results_q2c <- data.frame(
+    Scenario = c("Truth",
+                 "Q2(b): phi = 0 (valid IV, weak)",
+                 "Q2(c): phi = 0.5 (relevant IV, invalid)"),
+    beta_L   = c(0.6,
+                 as.numeric(coef(iv_q2b)["l"]),
+                 as.numeric(coef(iv_q2c)["l"]))
+)
+  
+kable(results_q2c, digits = 4,
+      caption = "Q2 — 2SLS point estimates across scenarios")
+```
+
+**Reading the output.** The partial $F$ on $l_{i,t-1}$ should now be
+very large — orders of magnitude above the Staiger-Stock threshold —
+confirming that the rank condition is restored when $\phi \neq 0$. But
+the 2SLS point estimate of $\beta_L$ will land noticeably away from the
+true value of $0.6$, with a tight standard error that *makes the bias
+look statistically significant*. This is the classic invalid-IV
+pathology: a precise answer to the wrong question. Taken together, Q2(b)
+and Q2(c) establish that the researcher's approach fails in both wage
+regimes — weakly in the $\phi = 0$ case, and with biased precision in
+the $\phi \neq 0$ case — and so is inconsistent for $\beta_L$ across the
+empirically relevant parameter space.
