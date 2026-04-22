@@ -883,3 +883,111 @@ Taken together, Q2(b) and Q2(c) establish that the researcher's approach
 fails in both wage regimes, weakly in the $\phi = 0$ case, and with
 biased precision in the $\phi \neq 0$ case, and so is inconsistent for
 $\beta_L$ across the empirically relevant parameter space.
+
+## Q2(d) Can $\beta_K$ be identified even if $\phi = 0$ and $\beta_L$ is known?
+
+**Answer: No. Even granting an oracle value of** $\beta_L$, the
+researcher's specification cannot separately identify $\beta_K$ and
+$\rho$. This is the Bond-Söderbom (2005) non-identification result.
+
+### Derivation
+
+Assume the best case for the researcher: $\phi = 0$, $U$ fixed, no
+adjustment costs — so the capital rule is exactly log-linear,
+$$k_{it} \;=\; \kappa_0 \,+\, \gamma\, a_{i,t-1}, \qquad \gamma = \frac{\rho}{1-\beta_L-\beta_K}.$$
+The control function for $a_{i,t-1}$ is then a *linear* function of
+$k_{it}$ alone:
+$$h(k_{it}, k_{i,t-1}) \;=\; a_{i,t-1} \;=\; \frac{k_{it} - \kappa_0}{\gamma}.$$
+Substitute into the researcher's equation, subtract $\beta_L l_{it}$
+from both sides (using the oracle $\beta_L$), and collect terms in
+$k_{it}$:
+$$\tilde v_{it} - \beta_L l_{it} \;=\; \underbrace{\bigl(\beta_0 - \tfrac{\rho \kappa_0}{\gamma}\bigr)}_{\text{constant}} \,+\, \underbrace{\left(\beta_K + \frac{\rho}{\gamma}\right)}_{\pi_K \,\equiv\, \text{reduced-form slope}} k_{it} \,+\, \xi_{it} \,+\, \varepsilon_{it}.$$
+
+The reduced-form slope on $k_{it}$ simplifies dramatically using
+$\rho/\gamma = 1 - \beta_L - \beta_K$:
+$$\pi_K \;\equiv\; \beta_K + \frac{\rho}{\gamma} \;=\; \beta_K + (1 - \beta_L - \beta_K) \;=\; 1 - \beta_L.$$
+
+### The non-identification punchline
+
+$\pi_K$ is a *known quantity* once $\beta_L$ is known — with
+$\beta_L = 0.6$, we have $\pi_K = 0.4$ mechanically, regardless of the
+true values of $\beta_K$ and $\rho$. The regression of
+$\tilde v_{it} - \beta_L l_{it}$ on $k_{it}$ therefore carries no
+structural content beyond confirming $\beta_L$ itself. All parameter
+pairs $(\beta_K, \rho)$ satisfying
+$$\beta_K \,+\, \frac{\rho}{1-\beta_L-\beta_K} \;=\; 1-\beta_L$$ are
+observationally equivalent. **Rank condition: one equation, two unknowns
+— fails.**
+
+Numerically at our calibration:
+$\beta_K + \rho/\gamma = 0.3 + 0.5/5 = 0.3 + 0.1 = 0.4 = 1 - \beta_L$. ✓
+A different DGP with $(\beta_K, \rho) = (0.2, 0.4)$ and the same
+$\beta_L$ would give $\gamma' = 0.4/0.2 = 2$ and
+$\pi_K' = 0.2 + 0.2 = 0.4$ — identical reduced form, indistinguishable
+from the data.
+
+### Numerical confirmation
+
+```{r q2d-demo}
+# ---------------------------------------------------------------------
+# Q2(d) — Verify that the researcher's reduced-form slope on k_t
+# equals (1 - beta_L), regardless of the individual values of beta_K
+# and rho.  Under the Q1 DGP (phi = 0) this is a point estimate; under
+# any other (beta_K, rho) pair satisfying the constraint it would be
+# the same.
+#
+# We use dat_q1 (phi = 0 data) and the oracle value beta_L = 0.6.
+# ---------------------------------------------------------------------
+
+# Form the cleaned dependent variable using the oracle beta_L.
+# Since k_t is chosen at t-1 it is orthogonal to (xi_t, eps_t), so
+# OLS is consistent for the reduced-form slope.
+dat_q2d <- dat_q1 %>%
+  mutate(y_tilde = vt - bL_cal * l)   # bL_cal = 0.6, set in q1c-gamma-check
+
+# Regress y_tilde on k_t and k_{t-1}.  The coefficient on k_t is pi_K;
+# the coefficient on k_{t-1} should be ~0 because under this DGP h
+# does not depend on k_{t-1}.
+reg_q2d <- lm(y_tilde ~ k + k_m1,
+              data = dat_q2d, na.action = na.exclude)
+
+knitr::kable(
+  summary(reg_q2d)$coefficients,
+  digits = 4,
+  caption = "Q2(d) reduced-form regression of $\\tilde v_{it} - \\beta_L l_{it}$ on $(k_{it}, k_{i,t-1})$"
+)
+
+# Compare the estimated pi_K to the theoretical 1 - beta_L = 0.4
+knitr::kable(
+  data.frame(
+    Quantity = c("$1 - \\beta_L$ (theoretical)",
+                 "$\\beta_K + \\rho/\\gamma$ at calibration",
+                 "Estimated slope on $k_t$"),
+    Value    = c(1 - bL_cal,
+                 bK_cal + rho_cal / gamma_true,
+                 as.numeric(coef(reg_q2d)["k"]))
+  ),
+  digits = 4,
+  caption = "Q2(d) — the reduced-form slope pins down $1 - \\beta_L$, not $\\beta_K$"
+)
+```
+
+The three numbers in the second table should all be $\approx 0.4$ — the
+pooled reduced-form coefficient is what the researcher recovers, and no
+algebraic manipulation of it can separate $\beta_K$ from $\rho$. The
+coefficient on $k_{i,t-1}$ should be numerically indistinguishable from
+zero, confirming that $h$ has collapsed to a function of $k_{it}$ alone.
+
+### Why Q1(b)'s BB-GMM escapes the collapse
+
+The two-stage procedure from Q1(b) avoids this trap because it uses
+**over-identifying moments** from $k_{i,t-2}$ and $y_{i,t-2}$ that the
+researcher's specification discards. Under the AR(1) structure, these
+twice-lagged variables deliver additional restrictions of the form
+$\mathbb{E}[k_{i,t-2}(\xi_{it} + \varepsilon_{it} - \rho\varepsilon_{i,t-1})] = 0$
+and similarly for $y_{i,t-2}$, which break the reduced-form collinearity
+and separately identify $\beta_K$ and $\rho$. The researcher's 2SLS,
+which conditions only on $(k_{it}, k_{i,t-1})$ and uses $l_{i,t-1}$ as
+the single excluded instrument, has no analogous source of extra
+restrictions — which is exactly why it fails here and why Q1(b)'s
+dynamic panel GMM does not.
