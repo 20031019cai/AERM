@@ -61,16 +61,15 @@ $$w_{it} \;=\; w \,+\, c_{it} \,+\, \phi \, c_{i,t-1}, \qquad c_{it} \sim \mathr
 The rental rate of capital $U$ is **fixed and common across firms and
 time**.
 
-The observed log of value-added is contaminated with classical
-measurement error:
+The observed log of value-added is contaminated with measurement error:
 $$\tilde v_{it} \;=\; v_{it} \,+\, \varepsilon_{it}, \qquad \varepsilon_{it} \sim \mathrm{i.i.d.}\, N(0, \sigma_\varepsilon^2).$$
 
 ## Information sets
 
 The firm's information set at $t-1$ includes $a_{i,t-1}$, $w_{i,t-1}$,
-$U$, and the fixed value-added price; it excludes $a_{it}$ and $w_{it}$.
+$U$, and the fixed value-added price. It excludes $a_{it}$ and $w_{it}$.
 So $K_{it}$ is uncorrelated with $\xi_{it}$ by construction, while
-$L_{it}$ — chosen after $\xi_{it}$ is realised — is not.
+$L_{it}$ (chosen after $\xi_{it}$ is realised) is not.
 
 ## Observed data
 
@@ -189,11 +188,11 @@ feasible OLS omitting $a$ should not.
 ```{r sim-check}
 dat0 <- simulate_pf(phi = 0)
 
-# Infeasible OLS — should give bL = 0.6, bK = 0.3
+# Infeasible OLS: should give bL = 0.6, bK = 0.3
 
   summary(lm(vt ~ l + k + a, data = dat0))$coefficients
 
-# Feasible OLS omitting a — biased (transmission bias)
+# Feasible OLS omitting a: biased (transmission bias)
 
   summary(lm(vt ~ l + k,    data = dat0))$coefficients
 ```
@@ -211,7 +210,7 @@ across firms and time.
 
 ## Q1(a) Two-stage procedure
 
-**Capital as proxy for past TFP.** With $U$ fixed, $\phi = 0$, and no
+With $U$ fixed, $\phi = 0$, and no
 adjustment costs, the FOC for capital combined with the AR(1) for $a$
 gives an *exactly* log-linear capital decision rule:
 
@@ -221,7 +220,7 @@ The map is invertible, so
 $a_{i,t-1} = (k_{it}-\kappa_0)/\gamma \equiv g(k_{it})$, capital alone
 is a sufficient statistic for past productivity.
 
-**First stage: Olley–Pakes style (**$\beta_L$)
+**First stage: Olley–Pakes style** ($\beta_L$)
 
 Replacing $a_{it} = \rho\, g(k_{it}) + \xi_{it}$ in the production
 function gives
@@ -265,9 +264,9 @@ and lags needed for both stages.
 ```{r q1b-setup}
 dat_q1 <- simulate_pf(phi = 0, urndvar = 0)
 
-dat_q1 <- dat_q1 %>%
+dat_q1 <- dat_q1 |> 
   mutate(
-    k_p1 = lead(k),   # k_{i,t+1} — acts as the investment-proxy
+    k_p1 = lead(k),   # k_{i,t+1} acts as the investment-proxy
     k_m1 = lag(k),
     k_m2 = lag(k, 2))
 ```
@@ -297,7 +296,7 @@ interaction terms as a hedge, they should come out near zero.
 
   round(summary(stage1)$coefficients[, 1:2], 4)
 
-# Extract the coefficient on l — this is our Stage 1 estimate of beta_L
+# Extract the coefficient on l, this is our Stage 1 estimate of beta_L
 
   bL_hat <- coef(stage1)["l"]
   bL_hat
@@ -325,7 +324,7 @@ three parameters, so the system is over-identified.
 #   y_t - rho * y_{t-1} = beta_0*(1-rho) + beta_K*(k_t - rho*k_{t-1})
 #                       + xi_t + eps_t - rho*eps_{t-1}
 
-# Instruments: (k_t, k_{t-1}, k_{t-2}, y_{t-2}, 1) — dated at t-1 or
+# Instruments: (k_t, k_{t-1}, k_{t-2}, y_{t-2}, 1), dated at t-1 or
 # earlier, so orthogonal to xi_t and to eps_{t-1}
 # ---------------------------------------------------------------------
 
@@ -384,7 +383,7 @@ results_q1 <- data.frame(
 )
 
 kable(results_q1, digits = 3,
-      caption = "Q1(b) — Two-stage estimates vs. true values")
+      caption = "Q1(b) Two-stage estimates vs. true values")
 ```
 
 With $T = 100{,}001$ all three estimates should be within two decimal
@@ -400,10 +399,10 @@ $\varphi(k_{it}, k_{i,t+1})$ is not a generic non-linear object, it is
 exactly affine:
 $$\varphi(k_{it}, k_{i,t+1}) \;=\; \beta_K\, k_{it} \,+\, \tfrac{1}{\gamma}\, k_{i,t+1} \,+\, \text{const}.$$
 
-So a *linear* first stage — OLS of $\tilde v_{it}$ on $l_{it}$,
-$k_{it}$, and $k_{i,t+1}$ — identifies $\beta_L$ *and* $\beta_K$ in a
-single regression, as the coefficients on $l_{it}$ and $k_{it}$
-respectively. The second stage is redundant.
+So a *linear* first stage (OLS of $\tilde v_{it}$ on $l_{it}$, $k_{it}$,
+and $k_{i,t+1}$ ) identifies $\beta_L$ *and* $\beta_K$ in a single
+regression, as the coefficients on $l_{it}$ and $k_{it}$ respectively.
+The second stage is redundant.
 
 Three features of the DGP combine to make $\varphi$ affine rather than
 genuinely non-linear:
@@ -414,7 +413,7 @@ genuinely non-linear:
     non-trivial function of multiple states.
 
 2.  **User cost** $U$ fixed across firms. No firm-level $u_{it}$ enters
-    the capital rule, so $k_{i,t+1}$ depends on $a_{it}$ alone — not on
+    the capital rule, so $k_{i,t+1}$ depends on $a_{it}$ alone, not on
     the pair $(a_{it}, u_{it})$.
 
 3.  $\phi = 0$. Wage innovations are i.i.d., so lagged $c_{i,t-1}$ does
@@ -429,8 +428,8 @@ cleanly as the coefficient on $k_{it}$ (its direct structural role) and
 $1/\gamma$ as the coefficient on $k_{i,t+1}$ (the inverse of the capital
 rule's sensitivity to $a_{it}$).
 
-**A sharper observation.** Not only is the second stage unnecessary —
-the *standard* OP second stage is under-identified here. In the OP
+**A sharper observation.** Not only is the second stage unnecessary, the
+*standard* OP second stage is under-identified here. In the OP
 formulation, one would regress
 $y_{it} = \tilde v_{it} - \hat\beta_L l_{it}$ on $k_{it}$ and a flexible
 function $h(k_{i,t-1}, k_{it})$ capturing $\rho\, a_{i,t-1}$. Under the
@@ -440,7 +439,7 @@ identifies the sum $\beta_K + \rho/\gamma = 1 - \beta_L$, not $\beta_K$
 and $\rho$ separately. This is the Bond–Söderbom (2005)
 non-identification result. The BB-style second stage used in Q1(b)
 avoids the collapse by exploiting over-identifying moments from
-$k_{i,t-2}$ and $y_{i,t-2}$, which is why it continues to work — but at
+$k_{i,t-2}$ and $y_{i,t-2}$, which is why it continues to work, but at
 that point we are no longer using the OP second stage in any
 recognisable form.
 
@@ -505,7 +504,7 @@ indistinguishable from zero, i.e. varphi has no curvature in this DGP.
 
 If these three coefficients are (a) small in magnitude and (b)
 statistically indistinguishable from zero, we have a direct numerical
-confirmation that $\varphi$ is affine under this DGP — and hence that
+confirmation that $\varphi$ is affine under this DGP , and hence that
 the first-stage specification alone identifies both $\beta_L$ and
 $\beta_K$ consistently, with no second stage required.
 
@@ -540,19 +539,19 @@ In equation $(\star)$, the composite disturbance is
 $\xi_{it} + \varepsilon_{it}$, and
 $$\mathrm{Cov}(l_{it},\, \xi_{it} + \varepsilon_{it} \mid k_{it}, k_{i,t-1}) \;=\; \text{pow}\cdot \sigma_\xi^2 \;>\; 0.$$
 
-OLS on $(\star)$ is therefore inconsistent for $\beta_L$, ie. the
-classic "transmission bias". Controlling for $h(k_{it}, k_{i,t-1})$ does
-not fix the problem because $h$ only absorbs $a_{i,t-1}$; the period-$t$
-innovation $\xi_{it}$ remains in the residual and is positively
-correlated with $l_{it}$. An outside instrument, which is something
-correlated with $l_{it}$ but orthogonal to $\xi_{it}$ and
-$\varepsilon_{it}$, is therefore needed to recover $\beta_L$.
+OLS on $(\star)$ is therefore inconsistent for $\beta_L$ . Controlling
+for $h(k_{it}, k_{i,t-1})$ does not fix the problem because $h$ only
+absorbs $a_{i,t-1}$; the period-$t$ innovation $\xi_{it}$ remains in the
+residual and is positively correlated with $l_{it}$. An outside
+instrument, which is something correlated with $l_{it}$ but orthogonal
+to $\xi_{it}$ and $\varepsilon_{it}$, is therefore needed to recover
+$\beta_L$.
 
 \newpage
 
 ## Q2(b) Is $l_{i,t-1}$ a good IV when $\phi = 0$?
 
-**Answer: valid but irrelevant. The 2SLS estimator is inconsistent for**
+**Valid but irrelevant. The 2SLS estimator is inconsistent for**
 $\beta_L$
 
 **1. Exogeneity**
@@ -600,11 +599,11 @@ the outside instrument for $l_t$.
 
 # Expectation: partial F-stat on l_{t-1} in the first stage should be
 # small (close to 1); 2SLS point estimate of beta_L should be far from
-# 0.6 with a large standard error — the fingerprint of weak-IV failure.
+# 0.6 with a large standard error
 # ---------------------------------------------------------------------
 
 # Add the lagged labour variable as the outside instrument
-dat_q2b <- dat_q1 %>%
+dat_q2b <- dat_q1 |> 
   mutate(l_m1 = lag(l))
 ```
 
@@ -626,7 +625,7 @@ dat_q2b <- dat_q1 %>%
   kable(
     summary(fs_q2b)$coefficients["l_m1", , drop = FALSE],
     digits = 4,
-    caption = "Q2(b) first-stage — coefficient on the outside instrument $l_{i,t-1}$"
+    caption = "Q2(b) first-stage, coefficient on the outside instrument $l_{i,t-1}$"
   )
 
 # Partial F-statistic on the single excluded instrument
@@ -652,14 +651,10 @@ dat_q2b <- dat_q1 %>%
 
 ```{r q2b-iv}
 # ---------------------------------------------------------------------
-# Run the researcher's 2SLS.  Expected: a point estimate of beta_L
+# Expected: a point estimate of beta_L
 # that is (a) far from the true 0.6 and/or (b) has a very wide
-# confidence interval — the classic weak-IV pathology.
+# confidence interval
 # ---------------------------------------------------------------------
-
-# AER::ivreg syntax: response ~ regressors | instruments
-# l is endogenous, (k, k_m1) are included exogenous regressors,
-# l_m1 is the excluded instrument
   
   iv_q2b <- ivreg(vt ~ l + k + k_m1 | l_m1 + k + k_m1, data = dat_q2b)
   iv_sum  <- summary(iv_q2b, diagnostics = TRUE)
@@ -672,9 +667,9 @@ dat_q2b <- dat_q1 %>%
     caption = "Q2(b) 2SLS coefficient estimates"
   )
 
-# Table 2: diagnostic tests — weak IV, Wu-Hausman endogeneity, Sargan over-id.
+# Table 2: diagnostic tests: weak IV, Wu-Hausman endogeneity, Sargan over-id
 # (Sargan is NA here because the system is exactly identified: 1 IV for 1
-# endogenous variable.)
+# endogenous variable)
   
   kable(
     iv_sum$diagnostics,
@@ -697,39 +692,28 @@ results_q2b <- data.frame(
 )
 
 kable(results_q2b, digits = 4,
-             caption = "Q2(b) — Weak-IV failure under phi = 0")
+             caption = "Q2(b) Weak-IV failure under phi = 0")
 ```
 
-**Results**
-
-The first-stage table reports a partial $F$-statistic on $l_{i,t-1}$ of
-only $0.358$. This is a tiny fraction of the Staiger-Stock threshold of
-$10$, exactly matching the theoretical prediction that the conditional
-correlation is zero in population.
-
-The 2SLS point estimate for $\beta_L$ is $0.7950$, with a standard error
-of $0.7474$ and a $t$-statistic of just $1.06$, i.e. statistically
-indistinguishable from zero, and with a 95% confidence interval easily
-wide enough to contain any value between roughly $-0.67$ and $2.26$.
-Algebraically the estimator returns a number, but it does not point at
-$\beta_L$ in any meaningful sense, because the instrument and the
-endogenous regressor are conditionally uncorrelated. With one excluded
-instrument the partial $F$ is asymptotically distributed $F(1, T-k)$
-under the null of zero partial correlation, centred at $1$. Any apparent
-"estimate" of $\beta_L$ is an artefact of finite-sample noise.
+The partial $F$ on $l_{i,t-1}$ is 0.358, well below the Staiger-Stock
+threshold of 10. This lines up with the theoretical prediction that the
+conditional correlation is zero in population. The 2SLS point estimate of
+$\beta_L$ is 0.795 with a standard error of 0.747, so the $t$-statistic is
+1.06 and the 95% confidence interval covers roughly $[-0.67, 2.26]$. The
+estimator delivers a number but no information about $\beta_L$.
 
 \newpage
 
 ## Q2(c) Is $l_{i,t-1}$ a good IV when $\phi \neq 0$?
 
-**Answer: No. The IV is now relevant but invalid. The 2SLS estimator is
+**No. The IV is now relevant but invalid. The 2SLS estimator is
 inconsistent for** $\beta_L$
 
 **Relevance**
 
 With $\phi \neq 0$ the wage follows an MA(1):
 $w_{it} = w + c_{it} + \phi\, c_{i,t-1}$. Both $w_{i,t-1}$ and $w_{it}$
-load on the shock $c_{i,t-1}$ — the former directly, the latter via the
+load on the shock $c_{i,t-1}$ . The former directly, the latter via the
 moving-average coefficient, so
 $$\mathrm{Cov}(w_{i,t-1}, w_{it}) \;=\; \phi\, \sigma_c^2 \;\neq\; 0.$$
 
@@ -755,7 +739,7 @@ The researcher's control function $h(k_{it}, k_{i,t-1})$ is therefore
 ($a_{i,t-1}$ and $c_{i,t-1}$), so no function of $(k_{it}, k_{i,t-1})$
 alone can recover $a_{i,t-1}$. The best-linear-predictor error
 $$\eta_{i,t-1} \;\equiv\; a_{i,t-1} \,-\, h(k_{it}, k_{i,t-1})$$ is not
-identically zero, and it is mechanically correlated with $c_{i,t-1}$,
+identically zero, and it is correlated with $c_{i,t-1}$,
 because $c_{i,t-1}$ is the piece of $k_{it}$ that the control function
 misattributes to $a_{i,t-1}$. The residual in the researcher's equation
 therefore contains $\rho\, \eta_{i,t-1}$, giving
@@ -764,7 +748,7 @@ because $l_{i,t-1}$ depends on
 $w_{i,t-1} = w + c_{i,t-1} + \phi\, c_{i,t-2}$ and so is correlated with
 $c_{i,t-1}$. The exclusion restriction fails, so 2SLS is inconsistent.
 
-### **Simulation**
+**Simulation**
 
 Simulate under phi != 0. Pick phi = 0.5 so that wages are moderately
 MA(1) but not extreme. The rest of the DGP is unchanged
@@ -778,7 +762,7 @@ MA(1) but not extreme. The rest of the DGP is unchanged
 # ---------------------------------------------------------------------
 
 # Simulate a fresh dataset under phi = 0.5
-dat_q2c <- simulate_pf(phi = 0.5, urndvar = 0) %>%
+dat_q2c <- simulate_pf(phi = 0.5, urndvar = 0) |> 
   mutate(
     l_m1 = lag(l),   # outside instrument for l_t
     k_m1 = lag(k)    # included exogenous regressor
@@ -787,7 +771,7 @@ dat_q2c <- simulate_pf(phi = 0.5, urndvar = 0) %>%
 
 ```{r q2c-firststage}
 # ---------------------------------------------------------------------
-# First-stage OLS — regress l_t on the outside IV plus controls
+# First-stage OLS: regress l_t on the outside IV plus controls
 
 # Unlike the phi = 0 case, the partial coefficient on l_m1 should be
 # large and highly significant
@@ -803,7 +787,7 @@ dat_q2c <- simulate_pf(phi = 0.5, urndvar = 0) %>%
   kable(
     summary(fs_q2c)$coefficients["l_m1", , drop = FALSE],
     digits = 4,
-    caption = "Q2(c) first-stage — coefficient on $l_{i,t-1}$ under $\\phi = 0.5$"
+    caption = "Q2(c) first-stage: coefficient on $l_{i,t-1}$ under $\\phi = 0.5$"
   )
 
 # Partial F-statistic on l_m1 (t-stat squared since 1 excluded IV)
@@ -846,7 +830,7 @@ dat_q2c <- simulate_pf(phi = 0.5, urndvar = 0) %>%
     caption = "Q2(c) 2SLS coefficient estimates"
   )
 
-# Table 2: diagnostic tests (Sargan is NA — system is exactly identified)
+# Table 2: diagnostic tests (Sargan is NA, ie. system is exactly identified)
   
   kable(
     iv_sum_q2c$diagnostics,
@@ -869,20 +853,18 @@ Q2(b)), and the $\phi = 0.5$ 2SLS (invalid-IV failure in this part)
 )
   
 kable(results_q2c, digits = 4,
-      caption = "Q2 — 2SLS point estimates across scenarios")
+      caption = "Q2 2SLS point estimates across scenarios")
 ```
 
-**Reading the output:** The partial $F$ on $l_{i,t-1}$ should now be
-very large, orders of magnitude above the Staiger-Stock threshold,
-confirming that the rank condition is restored when $\phi \neq 0$. But
-the 2SLS point estimate of $\beta_L$ will land noticeably away from the
-true value of $0.6$, with a tight standard error that *makes the bias
-look statistically significant*.
+The partial $F$ on $l_{i,t-1}$ is 679.9, comfortably above the Staiger-Stock
+threshold, so the rank condition is restored when $\phi \neq 0$. But the
+2SLS point estimate of $\beta_L$ is 0.0145, far from the true value of 0.6,
+and the standard error of 0.034 makes the bias look highly significant.
 
-Taken together, Q2(b) and Q2(c) establish that the researcher's approach
-fails in both wage regimes, weakly in the $\phi = 0$ case, and with
-biased precision in the $\phi \neq 0$ case, and so is inconsistent for
-$\beta_L$ across the empirically relevant parameter space.
+So the researcher's approach fails in both wage regimes: weakly when $\phi = 0$,
+and with precise bias when $\phi \neq 0$.
+
+\newpage
 
 ## Q2(d) Can $\beta_K$ be identified even if $\phi = 0$ and $\beta_L$ is known?
 
@@ -893,7 +875,7 @@ $\rho$. This is the Bond-Söderbom (2005) non-identification result.
 ### Derivation
 
 Assume the best case for the researcher: $\phi = 0$, $U$ fixed, no
-adjustment costs — so the capital rule is exactly log-linear,
+adjustment costs. So, the capital rule is exactly log-linear,
 $$k_{it} \;=\; \kappa_0 \,+\, \gamma\, a_{i,t-1}, \qquad \gamma = \frac{\rho}{1-\beta_L-\beta_K}.$$
 The control function for $a_{i,t-1}$ is then a *linear* function of
 $k_{it}$ alone:
@@ -907,76 +889,65 @@ The reduced-form slope on $k_{it}$ simplifies dramatically using
 $\rho/\gamma = 1 - \beta_L - \beta_K$:
 $$\pi_K \;\equiv\; \beta_K + \frac{\rho}{\gamma} \;=\; \beta_K + (1 - \beta_L - \beta_K) \;=\; 1 - \beta_L.$$
 
-### The non-identification punchline
+### Non-identification
 
-$\pi_K$ is a *known quantity* once $\beta_L$ is known — with
-$\beta_L = 0.6$, we have $\pi_K = 0.4$ mechanically, regardless of the
-true values of $\beta_K$ and $\rho$. The regression of
-$\tilde v_{it} - \beta_L l_{it}$ on $k_{it}$ therefore carries no
-structural content beyond confirming $\beta_L$ itself. All parameter
-pairs $(\beta_K, \rho)$ satisfying
-$$\beta_K \,+\, \frac{\rho}{1-\beta_L-\beta_K} \;=\; 1-\beta_L$$ are
-observationally equivalent. **Rank condition: one equation, two unknowns
-— fails.**
+Once $\beta_L$ is known, $\pi_K = 1 - \beta_L = 0.4$ regardless of $\beta_K$
+and $\rho$. The regression of $\tilde v_{it} - \beta_L l_{it}$ on $k_{it}$
+therefore contains no structural information beyond $\beta_L$. Any pair
+$(\beta_K, \rho)$ satisfying
+$$\beta_K + \frac{\rho}{1 - \beta_L - \beta_K} \;=\; 1 - \beta_L$$
+is observationally equivalent: one equation, two unknowns.
 
-Numerically at our calibration:
-$\beta_K + \rho/\gamma = 0.3 + 0.5/5 = 0.3 + 0.1 = 0.4 = 1 - \beta_L$. ✓
-A different DGP with $(\beta_K, \rho) = (0.2, 0.4)$ and the same
-$\beta_L$ would give $\gamma' = 0.4/0.2 = 2$ and
-$\pi_K' = 0.2 + 0.2 = 0.4$ — identical reduced form, indistinguishable
-from the data.
+At our calibration: $\beta_K + \rho/\gamma = 0.3 + 0.5/5 = 0.4 = 1-\beta_L$.
+A different DGP with $(\beta_K, \rho) = (0.2, 0.4)$ and the same $\beta_L$
+gives $\gamma' = 2$ and $\pi_K' = 0.2 + 0.2 = 0.4$, an identical reduced
+form indistinguishable from the data.
 
 ### Numerical confirmation
 
 ```{r q2d-demo}
-# ---------------------------------------------------------------------
-# Q2(d) — Verify that the researcher's reduced-form slope on k_t
-# equals (1 - beta_L), regardless of the individual values of beta_K
-# and rho.  Under the Q1 DGP (phi = 0) this is a point estimate; under
-# any other (beta_K, rho) pair satisfying the constraint it would be
-# the same.
-#
-# We use dat_q1 (phi = 0 data) and the oracle value beta_L = 0.6.
-# ---------------------------------------------------------------------
+# Form the cleaned dependent variable using the oracle beta_L
 
-# Form the cleaned dependent variable using the oracle beta_L.
 # Since k_t is chosen at t-1 it is orthogonal to (xi_t, eps_t), so
-# OLS is consistent for the reduced-form slope.
-dat_q2d <- dat_q1 %>%
-  mutate(y_tilde = vt - bL_cal * l)   # bL_cal = 0.6, set in q1c-gamma-check
+# OLS is consistent for the reduced-form slope
+
+  dat_q2d <- dat_q1 |> 
+    mutate(y_tilde = vt - bL_cal * l)   # bL_cal = 0.6, set in q1c-gamma-check
 
 # Regress y_tilde on k_t and k_{t-1}.  The coefficient on k_t is pi_K;
 # the coefficient on k_{t-1} should be ~0 because under this DGP h
-# does not depend on k_{t-1}.
-reg_q2d <- lm(y_tilde ~ k + k_m1,
-              data = dat_q2d, na.action = na.exclude)
+# does not depend on k_{t-1}
 
-knitr::kable(
-  summary(reg_q2d)$coefficients,
-  digits = 4,
-  caption = "Q2(d) reduced-form regression of $\\tilde v_{it} - \\beta_L l_{it}$ on $(k_{it}, k_{i,t-1})$"
-)
+  reg_q2d <- lm(y_tilde ~ k + k_m1,
+                data = dat_q2d, na.action = na.exclude)
+  
+  kable(
+    summary(reg_q2d)$coefficients,
+    digits = 4,
+    caption = "Q2(d) reduced-form regression of $\\tilde v_{it} - \\beta_L l_{it}$ on $(k_{it}, k_{i,t-1})$"
+  )
 
 # Compare the estimated pi_K to the theoretical 1 - beta_L = 0.4
-knitr::kable(
-  data.frame(
-    Quantity = c("$1 - \\beta_L$ (theoretical)",
-                 "$\\beta_K + \\rho/\\gamma$ at calibration",
-                 "Estimated slope on $k_t$"),
-    Value    = c(1 - bL_cal,
-                 bK_cal + rho_cal / gamma_true,
-                 as.numeric(coef(reg_q2d)["k"]))
-  ),
-  digits = 4,
-  caption = "Q2(d) — the reduced-form slope pins down $1 - \\beta_L$, not $\\beta_K$"
-)
+  
+  kable(
+    data.frame(
+      Quantity = c("$1 - \\beta_L$ (theoretical)",
+                   "$\\beta_K + \\rho/\\gamma$ at calibration",
+                   "Estimated slope on $k_t$"),
+      Value    = c(1 - bL_cal,
+                   bK_cal + rho_cal / gamma_true,
+                   as.numeric(coef(reg_q2d)["k"]))
+    ),
+    digits = 4,
+    caption = "Q2(d) the reduced-form slope pins down $1 - \\beta_L$, not $\\beta_K$"
+  )
 ```
 
-The three numbers in the second table should all be $\approx 0.4$ — the
-pooled reduced-form coefficient is what the researcher recovers, and no
+The three numbers in the second table should all be $\approx 0.4$ (the
+pooled reduced-form coefficient is what the researcher recovers) and no
 algebraic manipulation of it can separate $\beta_K$ from $\rho$. The
 coefficient on $k_{i,t-1}$ should be numerically indistinguishable from
-zero, confirming that $h$ has collapsed to a function of $k_{it}$ alone.
+zero, which can that $h$ has collapsed to a function of $k_{it}$ alone.
 
 ### Why Q1(b)'s BB-GMM escapes the collapse
 
@@ -989,5 +960,5 @@ and similarly for $y_{i,t-2}$, which break the reduced-form collinearity
 and separately identify $\beta_K$ and $\rho$. The researcher's 2SLS,
 which conditions only on $(k_{it}, k_{i,t-1})$ and uses $l_{i,t-1}$ as
 the single excluded instrument, has no analogous source of extra
-restrictions — which is exactly why it fails here and why Q1(b)'s
-dynamic panel GMM does not.
+restrictions, which is exactly why it fails here and why Q1(b)'s dynamic
+panel GMM does not.
