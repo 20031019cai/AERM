@@ -574,6 +574,7 @@ $$l_{i,t-1} \,-\, \mathbb{E}[l_{i,t-1} \mid k_{it}, k_{i,t-1}] \;=\; -\,\text{po
 while residual variation in $l_{it}$ is
 
 $$l_{it} \,-\, \mathbb{E}[l_{it} \mid k_{it}, k_{i,t-1}] \;=\; \text{pow}\cdot(\xi_{it} - w_{it})$$
+
 So the relevant covariance is
 
 $$\mathrm{Cov}(l_{i,t-1}, l_{it} \mid k_{it}, k_{i,t-1}) \;=\; \text{pow}^2\cdot \mathrm{Cov}(-w_{i,t-1},\, \xi_{it} - w_{it}) \;=\; 0,$$
