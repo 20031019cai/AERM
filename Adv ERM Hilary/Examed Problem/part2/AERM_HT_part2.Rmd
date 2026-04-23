@@ -428,7 +428,7 @@ cleanly as the coefficient on $k_{it}$ (its direct structural role) and
 $1/\gamma$ as the coefficient on $k_{i,t+1}$ (the inverse of the capital
 rule's sensitivity to $a_{it}$).
 
-**A sharper observation.** Not only is the second stage unnecessary, the
+Not only is the second stage unnecessary, the
 *standard* OP second stage is under-identified here. In the OP
 formulation, one would regress
 $y_{it} = \tilde v_{it} - \hat\beta_L l_{it}$ on $k_{it}$ and a flexible
@@ -896,7 +896,7 @@ and $\rho$. The regression of $\tilde v_{it} - \beta_L l_{it}$ on $k_{it}$
 therefore contains no structural information beyond $\beta_L$. Any pair
 $(\beta_K, \rho)$ satisfying
 $$\beta_K + \frac{\rho}{1 - \beta_L - \beta_K} \;=\; 1 - \beta_L$$
-is observationally equivalent: one equation, two unknowns.
+is equivalent: one equation, two unknowns.
 
 At our calibration: $\beta_K + \rho/\gamma = 0.3 + 0.5/5 = 0.4 = 1-\beta_L$.
 A different DGP with $(\beta_K, \rho) = (0.2, 0.4)$ and the same $\beta_L$

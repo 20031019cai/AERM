@@ -95,8 +95,6 @@ knitr::opts_chunk$set(echo = TRUE)
   hist(beer$marginal_cost,main = "Marginal Cost (£)", xlab = "£",   col = "yellow")
 ```
 
-**Observations:**
-
 -   **Price histogram**: shows the shape of the price distribution
     (right-skewed, most beers cheap with a few premium outliers)
 
@@ -279,12 +277,12 @@ $$\ln(s_{jt}) - \ln(s_{0t}) = \beta_0 + \beta_{\text{alc}} \cdot \text{alc}_j
 
 Both `price` and `ln_share_jg` are **endogenous**:
 
--   **Price** is endogenous because firms observe $\xi_{jt}$ before
+-   Price is endogenous because firms observe $\xi_{jt}$ before
     setting prices. Beers with high unobserved quality command higher
     prices, creating a positive correlation between `price` and
     $\xi_{jt}$. OLS would therefore underestimate price sensitivity.
 
--   **Within-group share** $\ln(s_{j|g,t})$ is endogenous because it
+-   Within-group share $\ln(s_{j|g,t})$ is endogenous because it
     depends on all prices in the market, which all depend on the
     $\xi$'s. If product $j$ has high $\xi_{jt}$, consumers substitute
     towards it, inflating its within-group share. OLS would therefore
@@ -297,7 +295,7 @@ So we need instruments:
     share but does not enter consumer utility directly)
 
 ```{r nested-logit-iv}
-# OLS (for comparison — biased due to endogeneity)
+# OLS (for comparison - biased due to endogeneity)
 
   model_ols <- lm(delta ~ alc_j + price + ln_share_jg, data = beer)
 
@@ -547,10 +545,10 @@ Own-price elasticities range from `r round(min(beer$elast_own), 2)` to
 `r round(mean(beer$elast_own), 2)`. All elastic, with most
 roughly 1.5× elastic. Backed-out marginal costs are tightly correlated
 with those in the data (correlation
-`r round(cor(beer$mc_implied, beer$marginal_cost), 2)`), but the scatter
+`r round(cor(beer$mc_implied, beer$marginal_cost), 2)`, but the scatter
 reveals two distinct bands: cheap beers (below £8) lie just below the
 45° line, while expensive beers (around £13) lie on a parallel band
-further below — their backed-out MC is systematically lower than the
+further below; their backed-out MC is systematically lower than the
 data MC. This second band reflects products with very high markups (the
 premium segment), where the single-product Nash assumption predicts
 higher implied markup, hence lower implied MC for a given price. The
@@ -558,7 +556,7 @@ diversion ratio to the outside good
 (`r round(mean(beer$diversion_outside), 3)`) is far lower than the
 outside good share (`r round(mean(beer$share_0), 3)`), reflecting strong
 within-nest substitution consistent with $\hat{\sigma}$ =
-`r round(sigma, 3)`. This highlights the key flexibility limitation of
+`r round(sigma, 3)`. This is the the main flexibility limitation of
 nested logit: all within-nest cross-price elasticities are forced to be
 identical, even though real beers differ substantially in their
 similarity.
@@ -717,7 +715,7 @@ the post-tax marginal costs.
   }
 ```
 
-**Step 4: Check — No-Tax Prices Should Equal Observed Prices**
+**Step 4: Check - No-Tax Prices Should Equal Observed Prices**
 
 Before analysing tax effects, we verify that running our contraction
 mapping with unchanged marginal costs recovers the observed prices. Any
@@ -1087,7 +1085,7 @@ shock.
   )
 
 # Specification 2: income-interacted price (BLP 1995 style)
-# Identical formula — heterogeneity controlled via theta_guesses and demographics
+# Identical formula; heterogeneity controlled via theta_guesses and demographics
 
   spec2_formula <- as.formula(
     "share ~ 0 + const + hpwt + air + mpd + space |
@@ -1151,7 +1149,7 @@ five characteristics (not price) and a demographic interaction
 
 ```{r theta-spec1}
 # Spec 1: normal RC on price and all 5 characteristics
-# Use modest positive starting values — BLPestimatoR treats these as sigmas
+# Use modest positive starting values; BLPestimatoR treats these as sigmas
 
   theta1 <- matrix(c(0.1, 3, 1, 1, 0.5, 0.5),
                  nrow = 6, ncol = 1)
@@ -1323,7 +1321,7 @@ also fits the moment conditions much better: the GMM objective is
 for Spec 1. The non-price characteristic estimates back this up. Spec 1's 
 `hpwt` of `r round(car_est_s1$theta_lin["hpwt", 1], 2)`) is hard to take 
 seriously, while Spec 2's `r round(car_est_s2$theta_lin["hpwt", 1], 2)`) is 
-in line with what we wouold expect.
+in line with what we would expect.
 
 \newpage
 
@@ -1746,7 +1744,7 @@ We use `nleqslv()` to find the producer-price vector that zeros this
 FOC, following the structure of Classwork 6.
 
 ```{r foc-vat-setup}
-# FOC function: returns (pf - mc - markup) — should equal 0 at equilibrium
+# FOC function: returns (pf - mc - markup), should equal 0 at equilibrium
 # mkt_target = market id (numeric, e.g. 1 for 1971)
 
   foc_vat_mkt <- function(pf, blp_data, par_theta2, own_prod, 
@@ -1954,7 +1952,7 @@ below mean firms absorb part of the tax.
 
 **Comment:**
 
-Under a 20% VAT, the two specifications give very different answers..
+Under a 20% VAT, the two specifications give very different answers.
 
 Under Spec 2, consumer-price increases range from about 5% to 30%, with 
 a mean around 15%, and there is a clear upward trend in original price. 
@@ -1972,6 +1970,3 @@ price-derivative matrix becomes near-singular and the FOC solver
 cannot pin down an equilibrium. Under Spec 2, the regressive-burden 
 concern is misplaced: it is high-priced cars that bear the larger 
 percentage burden, not low-priced ones.
-
-Under Spec 2, the commentators' worry about regressive burden is misplaced: high-priced
-cars bear a larger percentage burden, not low-priced cars.
