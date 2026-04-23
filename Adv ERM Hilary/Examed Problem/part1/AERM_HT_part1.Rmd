@@ -101,13 +101,12 @@ knitr::opts_chunk$set(echo = TRUE)
     (right-skewed, most beers cheap with a few premium outliers)
 
 -   **Alcohol content histogram**: shows alcohol is uniformly
-    distributed, indicates that there is good variation in strength
-    across products, so `alc_j` will have identifying power in
-    regressions.
+    distributed. There is good variation in strength across products, so
+    `alc_j` will have identifying power in regressions.
 
 -   **Marginal cost histogram**: shows costs are tightly distributed
-    between £1.00 and £1.60, indicates that costs vary enough to be a
-    useful instrument for price.
+    between £1.00 and £1.60. Costs vary enough to be a useful instrument
+    for price.
 
 ```{r alc-price-plots, fig.height=4, fig.width=10}
 # Compute binned means first
@@ -148,15 +147,15 @@ knitr::opts_chunk$set(echo = TRUE)
 **Observations:**
 
 The raw scatter (left) appears largely flat, but the binned means
-(right) reveal a clear positive relationship — mean price rises from
-around £3.75 at low alcohol to £3.95 at high alcohol. The effect is
-modest in magnitude (\~£0.20 range) but consistent across alcohol bins.
-Two features also stand out in the raw scatter: a "floating band" of
-premium beers priced around £13 regardless of alcohol content, and a
-much denser mass of mainstream beers clustered between £3 and £5. This
-pattern matters for part (d): since stronger beers are already slightly
-more expensive on average, an alcohol-based tax will amplify the
-existing price dispersion across the strength spectrum.
+(right) reveal a positive relationship. Mean price rises from around
+£3.75 at low alcohol to £3.95 at high alcohol. The effect is modest in
+magnitude (\~£0.20 range) but consistent across alcohol bins. Two
+features also stand out in the raw scatter: a "floating band" of premium
+beers priced around £13 regardless of alcohol content, and a much denser
+mass of mainstream beers clustered between £3 and £5. This pattern
+matters for part (d): since stronger beers are already slightly more
+expensive on average, an alcohol-based tax will amplify the existing
+price dispersion.
 
 ```{r market-structure}
 # Number of markets and products per market
@@ -194,7 +193,7 @@ The data contains `r n_distinct(beer$market_id)` markets and
 market (mean `r round(mean(table(beer$market_id)), 1)` products per
 market). Prices range from £`r round(min(beer$price), 2)` to
 £`r round(max(beer$price), 2)` with a mean of
-£`r round(mean(beer$price), 2)`, and are right-skewed — most beers are
+£`r round(mean(beer$price), 2)`, and are right-skewed; most beers are
 cheap with a few expensive outliers. Marginal costs range from
 £`r round(min(beer$marginal_cost), 2)` to
 £`r round(max(beer$marginal_cost), 2)`, always below price, consistent
@@ -281,7 +280,7 @@ $$\ln(s_{jt}) - \ln(s_{0t}) = \beta_0 + \beta_{\text{alc}} \cdot \text{alc}_j
 Both `price` and `ln_share_jg` are **endogenous**:
 
 -   **Price** is endogenous because firms observe $\xi_{jt}$ before
-    setting prices — beers with high unobserved quality command higher
+    setting prices. Beers with high unobserved quality command higher
     prices, creating a positive correlation between `price` and
     $\xi_{jt}$. OLS would therefore underestimate price sensitivity.
 
@@ -351,15 +350,16 @@ on two conditions.
 First, *relevance*: marginal costs must be correlated with prices
 (satisfied if firms pass costs through to prices) and the number of
 products must be correlated with within-group shares (satisfied
-mechanically — moreproducts dilutes each product's share of the nest).
+mechanically, since more products dilutes each product's share of the
+nest).
 
 Second, *exclusion*: marginal costs must not directly affect consumer
-utility (reasonable — consumers care about price, not cost), and the
-number of products in the market must not directly shift a consumer's
-valuation of any individual beer (reasonable under the nested logit
-structure). The residuals $\xi_{jt}$ are our estimate of unobserved
-product quality — product attributes that consumers value but that we do
-not observe in the data.
+utility (reasonable, since consumers care about price, not cost), and
+the number of products in the market must not directly shift a
+consumer's valuation of any individual beer (reasonable under the nested
+logit structure). The residuals $\xi_{jt}$ are our estimate of
+unobserved product quality, ie. product attributes that consumers value
+but that we do not observe.
 
 **Step 4: Extract Residuals as Unobserved Utility**
 
@@ -380,15 +380,15 @@ hist(beer$xi,
 ```
 
 **Comment on estimates:** The IV price coefficient ($\hat{\alpha}$) is
-`r round(coef(model_iv)["price"], 3)`, which is negative as expected —
-higher prices reduce demand. The nesting parameter $\hat{\sigma}$ on
-`ln_share_jg` is `r round(coef(model_iv)["ln_share_jg"], 3)`, which lies
-in (0,1), consistent with the nested logit model. Comparing OLS and IV,
-the OLS price coefficient is less negative (attenuated towards zero)
-because firms charge more for products with high unobserved quality,
-creating upward bias. The instruments correct for this. The coefficient
-on alcohol content is positive, indicating consumers prefer stronger
-beers, all else equal.
+`r round(coef(model_iv)["price"], 3)`, which is negative: higher prices
+reduce demand. The nesting parameter $\hat{\sigma}$ on `ln_share_jg` is
+`r round(coef(model_iv)["ln_share_jg"], 3)`, which lies in (0,1),
+consistent with the nested logit model. The OLS
+price coefficient is less negative (attenuated towards zero) because
+firms charge more for products with high unobserved quality, creating
+upward bias. The instruments correct for this. The coefficient on
+alcohol content is positive: consumers prefer stronger beers,
+all else equal.
 
 \newpage
 
@@ -427,7 +427,7 @@ $$\eta_{jj} = -\alpha \cdot p_{jt} \cdot
 \frac{1 - \sigma s_{j|g,t} - (1-\sigma)s_{jt}}{1-\sigma}$$
 
 The term in the numerator reflects that a price rise loses customers to
-two destinations — other beers (weighted by $\sigma$) and the outside
+two destinations: other beers (weighted by $\sigma$) and the outside
 good (weighted by $1-\sigma$).
 
 ```{r elasticities}
@@ -484,7 +484,7 @@ beer <- beer |>
 *Summary of backed-out marginal costs*
 
 | Statistic | Marginal Cost | Markup |
-|------------------------|------------------------------|------------------|
+|------------------------|------------------------|------------------------|
 | Min | `r round(min(beer$mc_implied), 3)` | `r round(min(beer$markup_implied), 3)` |
 | Median | `r round(median(beer$mc_implied), 3)` | `r round(median(beer$markup_implied), 3)` |
 | Mean | `r round(mean(beer$mc_implied), 3)` | `r round(mean(beer$markup_implied), 3)` |
@@ -511,12 +511,11 @@ abline(0, 1, col = "red", lwd = 2)
 
 **Step 3: Diversion Ratio to Outside Good**
 
-The diversion ratio from product $j$ to the outside good is the share of 
-customers leaving $j$ who switch to the outside good rather than to another 
-beer. Using the nested logit own- and cross-price effects (lecture slide 83), 
-and the fact that the outside good is alone in its own nest (so cross-nest 
-effects apply):
-
+The diversion ratio from product $j$ to the outside good is the share of
+customers leaving $j$ who switch to the outside good rather than to
+another beer. Using the nested logit own- and cross-price effects
+(lecture slide 83), and the fact that the outside good is alone in its
+own nest (so cross-nest effects apply):
 
 $$D_{j \to 0} = -\frac{\partial s_0 / \partial p_j}{\partial s_j / \partial p_j} 
 = \frac{(1-\sigma) s_0}{1 - \sigma s_{j|g} - (1-\sigma) s_j}$$
@@ -537,30 +536,32 @@ beer <- beer |>
 *Compare diversion ratio to outside good share directly*
 
 | Statistic | Diversion Ratio to Outside | Outside Good Share |
-|-----------------|--------------------------------|-----------------------|
+|------------------------|------------------------|------------------------|
 | Mean | `r round(mean(beer$diversion_outside), 3)` | `r round(mean(beer$share_0), 3)` |
 | Median | `r round(median(beer$diversion_outside), 3)` | `r round(median(beer$share_0), 3)` |
 
 **Comment:**
 
-Own-price elasticities range from `r round(min(beer$elast_own), 2)` to 
-`r round(max(beer$elast_own), 2)`, with mean 
-`r round(mean(beer$elast_own), 2)` — all elastic, with most beers roughly 
-1.5× elastic. Backed-out marginal costs are tightly correlated with those 
-in the data (correlation `r round(cor(beer$mc_implied, beer$marginal_cost), 2)`), 
-but the scatter reveals two distinct bands: cheap beers (below £8) lie 
-just below the 45° line, while expensive beers (around £13) lie on a 
-parallel band further below — their backed-out MC is systematically lower 
-than the data MC. This second band reflects products with very high 
-markups (the premium segment), where the single-product Nash assumption 
-predicts higher implied markup → lower implied MC for a given price.
-The diversion ratio to the outside good 
-(`r round(mean(beer$diversion_outside), 3)`) is far lower than the outside 
-good share (`r round(mean(beer$share_0), 3)`), reflecting strong within-nest 
-substitution consistent with $\hat{\sigma}$ = `r round(sigma, 3)`. This 
-highlights the key flexibility limitation of nested logit: all within-nest 
-cross-price elasticities are forced to be identical, even though real beers 
-differ substantially in their similarity.
+Own-price elasticities range from `r round(min(beer$elast_own), 2)` to
+`r round(max(beer$elast_own), 2)`, with mean
+`r round(mean(beer$elast_own), 2)`. All elastic, with most
+roughly 1.5× elastic. Backed-out marginal costs are tightly correlated
+with those in the data (correlation
+`r round(cor(beer$mc_implied, beer$marginal_cost), 2)`), but the scatter
+reveals two distinct bands: cheap beers (below £8) lie just below the
+45° line, while expensive beers (around £13) lie on a parallel band
+further below — their backed-out MC is systematically lower than the
+data MC. This second band reflects products with very high markups (the
+premium segment), where the single-product Nash assumption predicts
+higher implied markup, hence lower implied MC for a given price. The
+diversion ratio to the outside good
+(`r round(mean(beer$diversion_outside), 3)`) is far lower than the
+outside good share (`r round(mean(beer$share_0), 3)`), reflecting strong
+within-nest substitution consistent with $\hat{\sigma}$ =
+`r round(sigma, 3)`. This highlights the key flexibility limitation of
+nested logit: all within-nest cross-price elasticities are forced to be
+identical, even though real beers differ substantially in their
+similarity.
 
 \newpage
 
@@ -568,7 +569,7 @@ differ substantially in their similarity.
 
 The government is considering a £10 tax per unit of alcohol strength
 (`alc_j`). This increases each product's marginal cost by
-$10 \times \text{alc}_j$ — so stronger beers face a larger cost shock.
+$10 \times \text{alc}_j$, so stronger beers face a larger cost shock.
 We use our backed-out marginal costs from part (c) as the pre-tax
 baseline, rather than the marginal costs given in the data, to ensure
 internal consistency with the demand model.
@@ -875,13 +876,11 @@ pct_qty   <- 100 * (Q_post - Q_pre) / Q_pre
 
 The average price increase (£`r round(mean(beer$delta_price), 3)`)
 exceeds the average marginal cost increase
-(£`r round(mean(beer$delta_mc), 3)`), indicating overshifting of the tax
-— firms raise prices by more than the cost increase. This is a known
-feature of nested logit demand with market power. High-alcohol beers
+(£`r round(mean(beer$delta_mc), 3)`), indicating overshifting of the tax: firms raise prices by more than the cost increase. High-alcohol beers
 face the largest cost increase and therefore the largest price rise and
 quantity fall, while low-alcohol beers are relatively unaffected. The
 implied aggregate demand elasticity of `r round(pct_qty / pct_price, 2)`
-suggests aggregate beer demand is elastic — aggregate quantity falls
+suggests aggregate beer demand is elastic: aggregate quantity falls
 more than proportionately to the average price rise — meaning the tax
 meaningfully reduces total beer consumption.
 
@@ -947,7 +946,7 @@ par(mfrow = c(2, 2))
 
 The auto market contains `r n_distinct(autoData$year)` years
 (1971--1990) and `r nrow(autoData)` product-market observations. Prices
-are right-skewed — most cars are priced below \$20,000 with a small
+are right-skewed: most cars are priced below \$20,000 with a small
 number of luxury outliers above \$40,000. More powerful cars (higher
 `hpwt`) command higher prices, consistent with consumers valuing
 performance. Market shares are negatively related to price as expected.
@@ -1312,22 +1311,19 @@ integration with `r ndraws` draws, which balances accuracy against
 computational cost.
 
 **Comparison of specifications:** Both models produce negative price
-effects, but they operate differently. Spec 1 has $\hat{\sigma}_p$ =
-`r round(car_est_s1$theta_rc["unobs_sd*price"], 2)` on price
-(significant), implying heterogeneity in price sensitivity but no
-systematic link to observable demographics. Spec 2 has `invinc*price` =
-`r round(car_est_s2$theta_rc["invinc*price"], 2)` (significant), meaning
-consumers with low income (high $1/y_i$) are much more price-sensitive —
-exactly the BLP(1995) mechanism. The two specs also differ in their GMM
-objective values (`r round(car_est_s1$local_min, 0)` vs
-`r round(car_est_s2$local_min, 0)`), indicating Spec 2 fits the moment
-conditions much better, consistent with Spec 2 using a more realistic
-source of heterogeneity. Non-price characteristic parameters also
-differ: Spec 1 gives implausibly large negative values (e.g. `hpwt` =
-`r round(car_est_s1$theta_lin["hpwt", 1], 2)`) while Spec 2 gives more
-moderate coefficients (e.g. `hpwt` =
-`r round(car_est_s2$theta_lin["hpwt", 1], 2)`), again suggesting Spec 2
-is the better-identified model.
+effects, but they operate differently. Spec 1's $\hat{\sigma}_p$ on price is
+`r round(car_est_s1$theta_rc["unobs_sd*price"], 2)`
+(significant), so heterogeneity in price sensitivity is allowed but is not
+tied to any observable demographic. Spec 2's `invinc*price` coefficient of
+`r round(car_est_s2$theta_rc["invinc*price"], 2)` (significant) ties price 
+sensiticity to inverse income, low-income consumers (high $1/y_i$) are much
+more price-sensitive. This is the income channel from the BLP(1995). Spec 2 
+also fits the moment conditions much better: the GMM objective is 
+`r round(car_est_s2$local_min, 0)` versus `r round(car_est_s1$local_min, 0)`
+for Spec 1. The non-price characteristic estimates back this up. Spec 1's 
+`hpwt` of `r round(car_est_s1$theta_lin["hpwt", 1], 2)`) is hard to take 
+seriously, while Spec 2's `r round(car_est_s2$theta_lin["hpwt", 1], 2)`) is 
+in line with what we wouold expect.
 
 \newpage
 
@@ -1461,32 +1457,32 @@ Now, we see all three differences are zero, both models successfully
 invert to the observed shares, confirming the data objects were
 correctly updated.
 
-**Comment on starting values:** BLP estimation is known to be sensitive
+**Comment on starting values:** BLP estimation is sensitive
 to starting values because the GMM objective can have multiple local
-minima, particularly when the model has several nonlinear parameters. We
+minima, especially when the model has several nonlinear parameters. We
 experimented with several starting value vectors for each specification.
 
 For Specification 2, we use starting values informed by BLP(1995) and
-the classwork example — approximately (-14.12, 5.32, -3.32, -3.17,
+the classwork example: roughly (-14.12, 5.32, -3.32, -3.17,
 -0.62) for the unobserved heterogeneity $\sigma_k$ on (const, hpwt, air,
 mpd, space) and -25.3 for the income-price interaction. These values
-converged cleanly to a GMM value of `r round(car_est_s2$local_min, 0)`
-with the BLP inversion matching observed shares exactly.
+converged to a GMM value of `r round(car_est_s2$local_min, 0)`
+with the BLP inversion matching observed shares.
 
 For Specification 1, initial attempts with uniform starting values (1,
 1, 1, 1, 1, 1) produced numerical failures (`vmmin not finite` errors)
 or convergence to inferior local minima where the inner BLP inversion
 did not match observed shares. We therefore adopted starting values
-informed by Spec 2's estimates for the non-price characteristics —
-approximately (0.1, 3, 1, 1, 0.5, 0.5) for (price, const, hpwt, air,
-mpd, space). These values reach the lowest GMM objective we found
-(`r round(car_est_s1$local_min, 0)`), with the BLP inversion now
-matching observed shares exactly.
+informed by Spec 2's estimates for the non-price characteristics, roughly
+(0.1, 3, 1, 1, 0.5, 0.5) for (price, const, hpwt, air,
+mpd, space). These reach the lowest GMM objective we found
+(`r round(car_est_s1$local_min, 0)`), with the BLP inversion
+matching observed shares.
 
 Even so, Spec 1's GMM objective remains substantially higher than Spec
-2's, reflecting the inherent identification difficulty of putting a
+2's, reflecting the difficulty of identifying a
 symmetric normal random coefficient on price without observable
-demographic information — a key motivation for BLP(1995)'s
+demographic information. This is one of the main a motivations for BLP(1995)'s
 income-interaction specification.
 
 **Step 2: Select an Interesting Subset of 1971 Products**
@@ -1706,7 +1702,7 @@ multiplication.
 **Comment on model differences:**
 
 Specification 2 (income-interacted price) typically implies that
-high-price cars face less elastic demand — because they are purchased by
+high-price cars face less elastic demand, because they are purchased by
 high-income consumers whose price sensitivity is scaled down by $1/y_i$.
 This shows up as higher markups and Lerner indices for expensive cars
 under Spec 2.
@@ -1715,9 +1711,9 @@ Specification 1, by contrast, only introduces symmetric dispersion in
 price sensitivity (via the normal random coefficient), and does not
 systematically predict that luxury cars have more market power. If the
 summary table shows a much larger gap between high- and low-price Lerner
-indices under Spec 2 than Spec 1, this is the Spec 2 "income effect"
+indices under Spec 2 than Spec 1, this is the Spec 2 income effect
 operating as BLP intended. The cross-price elasticity matrices also
-reveal more realistic substitution patterns under Spec 2 — luxury cars
+reveal more realistic substitution patterns under Spec 2: luxury cars
 substitute more with each other (both bought by rich consumers) than
 with cheap cars.
 
@@ -1952,36 +1948,30 @@ correctly.
   abline(h = 20, col = "black", lty = 2)
 ```
 
-The red dashed line at 20% marks full passthrough: points above mean
-overshifting (consumer prices rise by more than the tax rate), points
+The red dashed line at 20% marks full passthrough: points above the line indicate
+overshifting (consumer prices rise by more than the tax rate); points
 below mean firms absorb part of the tax.
 
 **Comment:**
 
-Under a 20% VAT, the two specifications produce strikingly different
-results.
+Under a 20% VAT, the two specifications give very different answers..
 
-Spec 2 (income-interacted price) generates sensible, economically
-meaningful patterns: consumer-price increases range roughly from 5% to
-30%, clustered around 15%, with a visible upward trend in original
-price. High-priced cars experience a larger percentage consumer-price
-increase than low-priced cars. The mechanism is that high-price cars are
-bought by high-income, price-insensitive consumers, so firms can pass
-more of the tax through without losing many customers. **The
-commentators' concern** (low-priced cars would bear a disproportionately
-large percentage burden) **is not supported under Spec 2**.
+Under Spec 2, consumer-price increases range from about 5% to 30%, with 
+a mean around 15%, and there is a clear upward trend in original price. 
+High-priced cars see larger percentage increases than low-priced cars. 
+The intuition: high-price cars are bought by high-income, price-insensitive 
+consumers, so firms can pass more of the tax through without losing many 
+customers. The commentators' worry that low-priced cars would bear a 
+disproportionate burden is not borne out.
 
-Spec 1 (symmetric random coefficient on price) produces numerically
-**implausible results**: percentage consumer-price changes reach several
-hundred percent for cheap cars, inconsistent with any reasonable tax
-incidence. This reflects the identification problem we noted in part
-(a): Spec 1's estimated $\sigma_p$ on price is essentially zero, so the
+Spec 1 gives implausible numbers: percentage consumer-price changes 
+reach several hundred percent for cheap cars, which is not a reasonable 
+tax incidence. This reflects the identification problem from part (a). 
+Spec 1's estimated $\sigma_p$ on price is essentially zero, so the
 price-derivative matrix becomes near-singular and the FOC solver
-struggles to find a sensible equilibrium. The extreme values are an
-artefact of this, not a real economic prediction.
+cannot pin down an equilibrium. Under Spec 2, the regressive-burden 
+concern is misplaced: it is high-priced cars that bear the larger 
+percentage burden, not low-priced ones.
 
-Spec 2 is the credible model for policy analysis. Its structured
-heterogeneity through income makes the FOC well-behaved and produces
-interpretable counterfactual predictions. Under Spec 2, the
-commentators' worry about regressive burden is misplaced: high-priced
+Under Spec 2, the commentators' worry about regressive burden is misplaced: high-priced
 cars bear a larger percentage burden, not low-priced cars.
