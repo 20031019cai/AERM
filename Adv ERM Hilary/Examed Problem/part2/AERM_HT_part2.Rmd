@@ -205,7 +205,7 @@ is correctly implemented.
 
 # Question 1
 
-Throughout Q1 we impose $\phi = 0$, that means the log wage is i.i.d.
+Throughout Q1 we impose $\phi = 0$, so the log wage is i.i.d.
 across firms and time.
 
 ## Q1(a) Two-stage procedure
@@ -234,7 +234,7 @@ $\varepsilon_{it}$. The "serially uncorrelated wage" condition that OP
 requires is delivered here by $\phi = 0$, and the "no firm-level
 variation in the user cost" condition is delivered by $U$ being fixed.
 
-**Second stage: Blundell–Bond dynamic GMM (**$\beta_K$)
+**Second stage: Blundell–Bond dynamic GMM** ($\beta_K$)
 
 Form the cleaned dependent variable
 $y_{it} \equiv \tilde v_{it} - \hat\beta_L\, l_{it}$, which is
@@ -280,9 +280,9 @@ higher-order terms should come out near zero.
 
 The model is:
 
-$$\tilde v_{it} = \beta_L * l_{it} + \varphi(k_{it}, k_{t+1}) + \epsilon_{it}$$
+$$\tilde v_{it} = \beta_Ll_{it} + \varphi(k_{it}, k_{t+1}) + \epsilon_{it}$$
 
-Under this DGP varphi is affine, but we include quadratic and
+Under this DGP $\varphi$ is affine, but we include quadratic and
 interaction terms as a hedge, they should come out near zero.
 
 ```{r q1b-stage1}
@@ -407,12 +407,12 @@ The second stage is redundant.
 Three features of the DGP combine to make $\varphi$ affine rather than
 genuinely non-linear:
 
-1.  **No adjustment costs for capital.** The capital Euler equation does
+1.  No adjustment costs for capital. The capital Euler equation does
     not involve lagged capital as an additional state, so the policy
     function for $k_{i,t+1}$ is log-linear in $a_{it}$ rather than a
     non-trivial function of multiple states.
 
-2.  **User cost** $U$ fixed across firms. No firm-level $u_{it}$ enters
+2.  **User cost $U$ fixed across firms. No firm-level $u_{it}$ enters
     the capital rule, so $k_{i,t+1}$ depends on $a_{it}$ alone, not on
     the pair $(a_{it}, u_{it})$.
 
@@ -428,8 +428,7 @@ cleanly as the coefficient on $k_{it}$ (its direct structural role) and
 $1/\gamma$ as the coefficient on $k_{i,t+1}$ (the inverse of the capital
 rule's sensitivity to $a_{it}$).
 
-Not only is the second stage unnecessary, the
-*standard* OP second stage is under-identified here. In the OP
+The *standard* OP second stage is under-identified here. In the OP
 formulation, one would regress
 $y_{it} = \tilde v_{it} - \hat\beta_L l_{it}$ on $k_{it}$ and a flexible
 function $h(k_{i,t-1}, k_{it})$ capturing $\rho\, a_{i,t-1}$. Under the
@@ -445,7 +444,7 @@ recognisable form.
 
 ### Numerical confirmation
 
-*Linear first stage:* Under this DGP varphi is affine, so no polynomial
+*Linear first stage:* Under this DGP $\varphi$ is affine, so no polynomial
 terms are needed: a simple OLS of vt on (`l`, `k`, `k_{t+1}`) delivers
 $\beta_L$ and $\beta_K$ (and $1/\gamma$ as a bonus) in one shot.
 
@@ -469,7 +468,7 @@ $\gamma = \rho/(1-\beta_L-\beta_K) = 5$.
 
 *Sanity check:* the coefficient on $k_{t+1}$ in the linear first stage
 should numerically equal $1/\gamma$ computed from the structural
-parameters. This confirms the affine decomposition of varphi.
+parameters. This confirms the affine decomposition of $\varphi$.
 
 ```{r q1c-gamma-check}
 # Calibration values, taken from the Setup section
@@ -491,7 +490,7 @@ parameters. This confirms the affine decomposition of varphi.
 
 *Final check*: in the polynomial first stage from Q1(b), the quadratic
 and interaction terms should have coefficients numerically
-indistinguishable from zero, i.e. varphi has no curvature in this DGP.
+indistinguishable from zero, i.e. $\varphi$ has no curvature in this DGP.
 
 ```{r q1c-polynomial-terms}
 # Extract the estimated coefficients on k^2, k_{t+1}^2, and k * k_{t+1}
@@ -539,7 +538,7 @@ In equation $(\star)$, the composite disturbance is
 $\xi_{it} + \varepsilon_{it}$, and
 $$\mathrm{Cov}(l_{it},\, \xi_{it} + \varepsilon_{it} \mid k_{it}, k_{i,t-1}) \;=\; \text{pow}\cdot \sigma_\xi^2 \;>\; 0.$$
 
-OLS on $(\star)$ is therefore inconsistent for $\beta_L$ . Controlling
+OLS on $(\star)$ is therefore inconsistent for $\beta_L$. Controlling
 for $h(k_{it}, k_{i,t-1})$ does not fix the problem because $h$ only
 absorbs $a_{i,t-1}$; the period-$t$ innovation $\xi_{it}$ remains in the
 residual and is positively correlated with $l_{it}$. An outside
@@ -551,7 +550,7 @@ $\beta_L$.
 
 ## Q2(b) Is $l_{i,t-1}$ a good IV when $\phi = 0$?
 
-**Valid but irrelevant. The 2SLS estimator is inconsistent for**
+**Valid but irrelevant**. The 2SLS estimator is inconsistent for
 $\beta_L$
 
 **1. Exogeneity**
@@ -696,7 +695,7 @@ kable(results_q2b, digits = 4,
 ```
 
 The partial $F$ on $l_{i,t-1}$ is 0.358, well below the Staiger-Stock
-threshold of 10. This lines up with the theoretical prediction that the
+threshold of 10. This matches the theoretical prediction that the
 conditional correlation is zero in population. The 2SLS point estimate of
 $\beta_L$ is 0.795 with a standard error of 0.747, so the $t$-statistic is
 1.06 and the 95% confidence interval covers roughly $[-0.67, 2.26]$. The
@@ -706,14 +705,13 @@ estimator delivers a number but no information about $\beta_L$.
 
 ## Q2(c) Is $l_{i,t-1}$ a good IV when $\phi \neq 0$?
 
-**No. The IV is now relevant but invalid. The 2SLS estimator is
-inconsistent for** $\beta_L$
+**No. The IV is now relevant but invalid. The 2SLS estimator is inconsistent for $\beta_L$**
 
 **Relevance**
 
 With $\phi \neq 0$ the wage follows an MA(1):
 $w_{it} = w + c_{it} + \phi\, c_{i,t-1}$. Both $w_{i,t-1}$ and $w_{it}$
-load on the shock $c_{i,t-1}$ . The former directly, the latter via the
+load on the shock $c_{i,t-1}$: the former directly, the latter via the
 moving-average coefficient, so
 $$\mathrm{Cov}(w_{i,t-1}, w_{it}) \;=\; \phi\, \sigma_c^2 \;\neq\; 0.$$
 
@@ -856,7 +854,7 @@ kable(results_q2c, digits = 4,
       caption = "Q2 2SLS point estimates across scenarios")
 ```
 
-The partial $F$ on $l_{i,t-1}$ is 679.9, comfortably above the Staiger-Stock
+The partial $F$ on $l_{i,t-1}$ is 679.9, far above the Staiger-Stock
 threshold, so the rank condition is restored when $\phi \neq 0$. But the
 2SLS point estimate of $\beta_L$ is 0.0145, far from the true value of 0.6,
 and the standard error of 0.034 makes the bias look highly significant.
@@ -868,7 +866,7 @@ and with precise bias when $\phi \neq 0$.
 
 ## Q2(d) Can $\beta_K$ be identified even if $\phi = 0$ and $\beta_L$ is known?
 
-**Answer: No. Even granting an oracle value of** $\beta_L$, the
+**No.** Even granting an oracle value of $\beta_L$, the
 researcher's specification cannot separately identify $\beta_K$ and
 $\rho$. This is the Bond-Söderbom (2005) non-identification result.
 
