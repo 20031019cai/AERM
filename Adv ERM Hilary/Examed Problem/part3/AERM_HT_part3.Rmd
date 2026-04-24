@@ -500,10 +500,20 @@ I fit $(\dagger)$ for $\vartheta \in \{2, 3, 4\}$ to gauge sensitivity to the ch
 # Assemble the plot data frame
 
     mte_df_q3 <- bind_rows(
-        tibble(u = u_grid, MTE = mte_true,                       Curve = "Actual"),
-        tibble(u = u_grid, MTE = mte_poly(fit_q3$d2, u_grid, xbar), Curve = "Polynomial (deg 2)"),
-        tibble(u = u_grid, MTE = mte_poly(fit_q3$d3, u_grid, xbar), Curve = "Polynomial (deg 3)"),
-        tibble(u = u_grid, MTE = mte_poly(fit_q3$d4, u_grid, xbar), Curve = "Polynomial (deg 4)")
+        tibble(u = u_grid, MTE = mte_true,   
+               Curve = "Actual"),
+        
+        tibble(u = u_grid, 
+               MTE = mte_poly(fit_q3$d2, u_grid, xbar), 
+               Curve = "Polynomial (deg 2)"),
+        
+        tibble(u = u_grid, 
+               MTE = mte_poly(fit_q3$d3, u_grid, xbar), 
+               Curve = "Polynomial (deg 3)"),
+        
+        tibble(u = u_grid, 
+               MTE = mte_poly(fit_q3$d4, u_grid, xbar), 
+               Curve = "Polynomial (deg 4)")
     )
 
     ggplot(mte_df_q3, aes(x = u, y = MTE, colour = Curve, linetype = Curve)) +
