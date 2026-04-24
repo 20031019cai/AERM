@@ -1,6 +1,185 @@
 ---
 title: "AERM_HT_part3"
 author: 'Candidate Number: 1091806'
-date: "2026-04-20"
-output: html_document
+date: "2026-04-19"
+output:
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    toc_depth: 2
+    number_sections: false
+  html_document:
+    toc: true
+    toc_depth: '2'
+    df_print: paged
+subtitle: 'Assessed Problem Set: Empirical IO'
+fontsize: 11pt
+geometry: margin=1in
+header-includes:
+- \usepackage{float}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{amsmath}
+- \usepackage{newunicodechar}
+- \newunicodechar{ρ}{$\rho$}
+- \newunicodechar{π}{$\pi$}
+- \newunicodechar{ξ}{$\xi$}
 ---
+
+# Libraries
+
+```{r libraries}
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+```
+
+# Question 1
+
+The DGP follows Section 10 of Heckman, Urzua and Vytlacil (2006). It specifies a generalised Roy model with two potential outcomes:
+
+$$Y_1 = \alpha_1 + \phi + X'\beta_1 + U_1, \quad Y_0 = \alpha_0 + X'\beta_0 + U_0$$
+
+Treatment selection is as:
+
+$$D = \mathbf{1}\{\gamma_0 + \gamma_1 Z_1 + \gamma_2 Z_2 - V > 0\}$$
+
+The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U_0 = \sigma_0 \epsilon$, $V = \sigma_V^* \epsilon$, where $\epsilon \sim N(0,1)$. This ensures joint normality, 
+
+```{r q1-simulate}
+# Seed and sample size
+    set.seed(34837)
+    N <- 5000
+
+# Parameters
+    
+    alpha_0 <- 0.02
+    alpha_1 <- 0.04
+    phi     <- 0.2
+    
+    beta_0 <- c(0.5, 0.1)
+    beta_1 <- c(0.8, 0.4)
+    
+    gamma_0 <- 0.2
+    gamma_1 <- 0.3
+    gamma_2 <- 0.1
+    
+    sigma_1  <- 0.012
+    sigma_0  <- -0.05
+    sigma_V  <- -1
+
+# Draw covariates and instruments (all mutually independent)
+X1 <- rnorm(N, mean = -2, sd = 2)
+X2 <- rnorm(N, mean =  2, sd = 2)
+Z1 <- rnorm(N, mean = -1, sd = 3)
+Z2 <- rnorm(N, mean =  1, sd = 3)
+
+# Common factor and unobservables
+epsilon <- rnorm(N)
+U1 <- sigma_1 * epsilon
+U0 <- sigma_0 * epsilon
+V  <- sigma_V * epsilon
+
+# Potential outcomes
+Y1 <- alpha_1 + phi + beta_1[1] * X1 + beta_1[2] * X2 + U1
+Y0 <- alpha_0 + beta_0[1] * X1 + beta_0[2] * X2 + U0
+
+# Selection and observed outcome
+latent_index <- gamma_0 + gamma_1 * Z1 + gamma_2 * Z2 - V
+D <- as.integer(latent_index > 0)
+Y <- D * Y1 + (1 - D) * Y0
+
+# Collect into data frame
+data <- tibble(Y, D, Y1, Y0, X1, X2, Z1, Z2, epsilon, U1, U0, V)
+
+cat("Treatment share:", round(mean(D), 3), "\n")
+cat("Sample size:", N, "\n")
+```
+
+## Propensity Score Estimation
+
+The propensity score is defined as $P(z) = \Pr(D = 1 \mid Z = z)$. Given the probit structure implied by $V = \sigma_V^* \epsilon$ with $\epsilon \sim N(0,1)$, a natural estimator is:
+
+$$\hat{P}(z) = \Phi(z'\hat{\gamma})$$
+
+estimated via probit regression of $D$ on $(Z_1, Z_2)$.
+
+```{r q1-propensity}
+# Estimate propensity score via probit
+ps_model <- glm(D ~ Z1 + Z2, family = binomial(link = "probit"), data = data)
+
+# Store fitted propensity scores
+data <- data |> mutate(ps = predict(ps_model, type = "response"))
+
+# Summary of propensity score distribution
+summary(data$ps)
+```
+
+## Checking Full Support
+
+Full support requires that the estimated propensity score spans the full unit interval $[0,1]$ and, crucially, that both treated ($D=1$) and untreated ($D=0$) individuals are observed at every value of $P(Z)$. I check this in two ways: visually and via a binned overlap test.
+
+```{r q1-density-plot, fig.width=7, fig.height=4}
+# Visual check: overlaid densities by treatment status
+ggplot(data, aes(x = ps, fill = factor(D))) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 60, alpha = 0.45, position = "identity") +
+  labs(x = "Estimated propensity score",
+       y = "Density",
+       fill = "Treatment") +
+  scale_fill_manual(values = c("0" = "steelblue", "1" = "tomato"),
+                    labels = c("D = 0", "D = 1")) +
+  theme_minimal(base_size = 13)
+```
+
+```{r q1-bin-check}
+# Binned overlap check at 1-percentile resolution
+breaks <- seq(0, 1, by = 0.01)
+
+bin_overlap <- data |>
+  mutate(bin = cut(ps, breaks = breaks, include.lowest = TRUE)) |>
+  count(bin, D) |>
+  pivot_wider(names_from = D, values_from = n, values_fill = 0) |>
+  rename(untreated = `0`, treated = `1`) |>
+  mutate(has_overlap = untreated > 0 & treated > 0)
+
+# Show bins WITHOUT overlap
+no_overlap <- bin_overlap |> filter(!has_overlap)
+
+kable(no_overlap,
+      caption = "Propensity score bins lacking common support",
+      col.names = c("Bin", "Untreated", "Treated", "Overlap"))
+```
+
+```{r q1-support-range}
+# Continuous support range
+support_bins <- bin_overlap |> filter(has_overlap)
+cat("Common support region: [",
+    min(breaks[breaks >= 0][which(bin_overlap$has_overlap)[1]]),
+    ",",
+    max(breaks[breaks <= 1][tail(which(bin_overlap$has_overlap), 1) + 1]),
+    "]\n")
+
+cat("Number of bins with overlap:",
+    sum(bin_overlap$has_overlap), "out of", nrow(bin_overlap), "\n")
+```
+
+## Discussion
+
+**Full support** means that for every value $u_D \in [0,1]$, there exist individuals from both treatment groups in a neighbourhood of $P(Z) = u_D$. The results above show that support fails only at the extreme tails — the lowest and highest few percentiles of the propensity score distribution contain only untreated or only treated individuals, respectively.
+
+Full support matters because the MTE is identified as the derivative of a conditional expectation with respect to the propensity score:
+
+$$MTE(x, u_D) = \frac{\partial\, E[Y \mid X = x,\, P(Z) = p]}{\partial p}\bigg|_{p = u_D}$$
+
+Computing this derivative at any point $u_D$ requires observing outcomes from individuals with propensity scores in a neighbourhood of $u_D$. If only one treatment group is present at some value of $p$, the conditional expectation $E[Y \mid X, P(Z) = p]$ cannot trace out how outcomes change with $p$ at that margin, and the derivative is not identified. The MTE can therefore only be estimated over the region where common support holds. In this simulation, that region covers approximately $(0.02, 0.97)$, which is sufficient for practical purposes.
+
+
+```{r}
+
+```
+
+
+
+
+
