@@ -32,6 +32,7 @@ header-includes:
 library(tidyverse)
 library(ggplot2)
 library(knitr)
+
 ```
 
 # Question 1
@@ -50,11 +51,12 @@ The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U
 
 ```{r q1-simulate}
 # Seed and sample size
+
     set.seed(34837)
     N <- 5000
 
 # Parameters
-    
+
     alpha_0 <- 0.02
     alpha_1 <- 0.04
     phi     <- 0.2
@@ -71,31 +73,37 @@ The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U
     sigma_V  <- -1
 
 # Draw covariates and instruments (all mutually independent)
-X1 <- rnorm(N, mean = -2, sd = 2)
-X2 <- rnorm(N, mean =  2, sd = 2)
-Z1 <- rnorm(N, mean = -1, sd = 3)
-Z2 <- rnorm(N, mean =  1, sd = 3)
+# Variance 4 and 9: sd = √4=2; sd =√9=3
+
+    X1 <- rnorm(N, mean = -2, sd = 2)
+    X2 <- rnorm(N, mean =  2, sd = 2)
+    Z1 <- rnorm(N, mean = -1, sd = 3)
+    Z2 <- rnorm(N, mean =  1, sd = 3)
 
 # Common factor and unobservables
-epsilon <- rnorm(N)
-U1 <- sigma_1 * epsilon
-U0 <- sigma_0 * epsilon
-V  <- sigma_V * epsilon
+
+    epsilon <- rnorm(N)
+    U1 <- sigma_1 * epsilon
+    U0 <- sigma_0 * epsilon
+    V  <- sigma_V * epsilon
 
 # Potential outcomes
-Y1 <- alpha_1 + phi + beta_1[1] * X1 + beta_1[2] * X2 + U1
-Y0 <- alpha_0 + beta_0[1] * X1 + beta_0[2] * X2 + U0
+
+    Y1 <- alpha_1 + phi + beta_1[1] * X1 + beta_1[2] * X2 + U1
+    Y0 <- alpha_0 + beta_0[1] * X1 + beta_0[2] * X2 + U0
 
 # Selection and observed outcome
-latent_index <- gamma_0 + gamma_1 * Z1 + gamma_2 * Z2 - V
-D <- as.integer(latent_index > 0)
-Y <- D * Y1 + (1 - D) * Y0
+
+    latent_index <- gamma_0 + gamma_1 * Z1 + gamma_2 * Z2 - V
+    D <- as.integer(latent_index > 0)
+    Y <- D * Y1 + (1 - D) * Y0
 
 # Collect into data frame
-data <- tibble(Y, D, Y1, Y0, X1, X2, Z1, Z2, epsilon, U1, U0, V)
 
-cat("Treatment share:", round(mean(D), 3), "\n")
-cat("Sample size:", N, "\n")
+    data <- tibble(Y, D, Y1, Y0, X1, X2, Z1, Z2, epsilon, U1, U0, V)
+
+    cat("Treatment share:", round(mean(D), 3), "\n")
+    cat("Sample size:", N, "\n")
 ```
 
 ## Propensity Score Estimation

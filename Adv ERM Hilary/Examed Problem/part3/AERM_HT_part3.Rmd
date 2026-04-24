@@ -1,7 +1,7 @@
 ---
-title: "AERM_HT_part3"
-author: 'Candidate Number: 1091806'
-date: "2026-04-19"
+title: "Advanced Empirical Research Methods Hilary 2025/26"
+author: 'Candidate ID: 1091806'
+date: "2026-04-24"
 output:
   pdf_document:
     toc: true
@@ -12,27 +12,41 @@ output:
     toc: true
     toc_depth: '2'
     df_print: paged
-subtitle: 'Assessed Problem Set: Empirical IO'
+subtitle: 'Assessment Exercise: Marginal Treatment Effects'
 fontsize: 11pt
 geometry: margin=1in
 header-includes:
+- \usepackage{amsmath}
 - \usepackage{float}
 - \usepackage{booktabs}
 - \usepackage{longtable}
-- \usepackage{amsmath}
 - \usepackage{newunicodechar}
 - \newunicodechar{ρ}{$\rho$}
 - \newunicodechar{π}{$\pi$}
 - \newunicodechar{ξ}{$\xi$}
+- \newunicodechar{ϕ}{$\phi$}
+- \newunicodechar{φ}{$\varphi$}
+- \newunicodechar{γ}{$\gamma$}
+- \newunicodechar{σ}{$\sigma$}
+- \newunicodechar{α}{$\alpha$}
+- \newunicodechar{β}{$\beta$}
+- \newunicodechar{Φ}{$\Phi$}
+editor_options:
+  markdown:
+    wrap: 72
 ---
+
+\newpage
 
 # Libraries
 
-```{r libraries}
+```{r libraries, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(ggplot2)
 library(knitr)
 ```
+
+\newpage
 
 # Question 1
 
@@ -46,56 +60,63 @@ $$
 D = \mathbf{1}\{\gamma_0 + \gamma_1 Z_1 + \gamma_2 Z_2 - V > 0\}
 $$
 
-The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U_0 = \sigma_0 \epsilon$, $V = \sigma_V^* \epsilon$, where $\epsilon \sim N(0,1)$. This ensures joint normality, 
+The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U_0 = \sigma_0 \epsilon$, $V = \sigma_V^* \epsilon$, where $\epsilon \sim N(0,1)$. This ensures joint normality,
 
 ```{r q1-simulate}
 # Seed and sample size
+
     set.seed(34837)
     N <- 5000
 
 # Parameters
-    
+
     alpha_0 <- 0.02
     alpha_1 <- 0.04
     phi     <- 0.2
-    
+
     beta_0 <- c(0.5, 0.1)
     beta_1 <- c(0.8, 0.4)
-    
+
     gamma_0 <- 0.2
     gamma_1 <- 0.3
     gamma_2 <- 0.1
-    
+
     sigma_1  <- 0.012
     sigma_0  <- -0.05
     sigma_V  <- -1
 
 # Draw covariates and instruments (all mutually independent)
-X1 <- rnorm(N, mean = -2, sd = 2)
-X2 <- rnorm(N, mean =  2, sd = 2)
-Z1 <- rnorm(N, mean = -1, sd = 3)
-Z2 <- rnorm(N, mean =  1, sd = 3)
+# Variance 4 and 9: sd = √4=2; sd =√9=3
+
+    X1 <- rnorm(N, mean = -2, sd = 2)
+    X2 <- rnorm(N, mean =  2, sd = 2)
+    Z1 <- rnorm(N, mean = -1, sd = 3)
+    Z2 <- rnorm(N, mean =  1, sd = 3)
 
 # Common factor and unobservables
-epsilon <- rnorm(N)
-U1 <- sigma_1 * epsilon
-U0 <- sigma_0 * epsilon
-V  <- sigma_V * epsilon
+
+    epsilon <- rnorm(N)
+    U1 <- sigma_1 * epsilon
+    U0 <- sigma_0 * epsilon
+    V  <- sigma_V * epsilon
 
 # Potential outcomes
-Y1 <- alpha_1 + phi + beta_1[1] * X1 + beta_1[2] * X2 + U1
-Y0 <- alpha_0 + beta_0[1] * X1 + beta_0[2] * X2 + U0
+
+    Y1 <- alpha_1 + phi + beta_1[1] * X1 + beta_1[2] * X2 + U1
+    Y0 <- alpha_0 + beta_0[1] * X1 + beta_0[2] * X2 + U0
 
 # Selection and observed outcome
-latent_index <- gamma_0 + gamma_1 * Z1 + gamma_2 * Z2 - V
-D <- as.integer(latent_index > 0)
-Y <- D * Y1 + (1 - D) * Y0
+
+    latent_index <- gamma_0 + gamma_1 * Z1 + gamma_2 * Z2 - V
+    D <- as.integer(latent_index > 0)
+    Y <- D * Y1 + (1 - D) * Y0
 
 # Collect into data frame
-data <- tibble(Y, D, Y1, Y0, X1, X2, Z1, Z2, epsilon, U1, U0, V)
 
-cat("Treatment share:", round(mean(D), 3), "\n")
-cat("Sample size:", N, "\n")
+    data <- tibble(Y, D, Y1, Y0, X1, X2, Z1, Z2, epsilon, U1, U0, V)
+
+    cat("Treatment share:", round(mean(D), 3), "\n")
+    cat("Sample size:", N, "\n")
 ```
 
 ## Propensity Score Estimation
@@ -170,18 +191,171 @@ cat("Number of bins with overlap:",
 
 **Full support** means that for every value $u_D \in [0,1]$, there exist individuals from both treatment groups in a neighbourhood of $P(Z) = u_D$. The results above show that support fails only at the extreme tails — the lowest and highest few percentiles of the propensity score distribution contain only untreated or only treated individuals, respectively.
 
-Full support matters because the MTE is identified as the derivative of a conditional expectation with respect to the propensity score:
+**Full support matters** because the MTE is identified as the derivative of a conditional expectation with respect to the propensity score:
 
 $$MTE(x, u_D) = \frac{\partial\, E[Y \mid X = x,\, P(Z) = p]}{\partial p}\bigg|_{p = u_D}$$
 
 Computing this derivative at any point $u_D$ requires observing outcomes from individuals with propensity scores in a neighbourhood of $u_D$. If only one treatment group is present at some value of $p$, the conditional expectation $E[Y \mid X, P(Z) = p]$ cannot trace out how outcomes change with $p$ at that margin, and the derivative is not identified. The MTE can therefore only be estimated over the region where common support holds. In this simulation, that region covers approximately $(0.02, 0.97)$, which is sufficient for practical purposes.
 
+\newpage
 
-```{r}
+# Question 2
 
+## Derivation of the MTE formula
+
+The equation at the bottom of HUV page 4,
+$$
+\mathrm{MTE}(X = x, U_D = u_D) \;=\; x'(\beta_1 - \beta_0) \;+\; (\rho_1 - \rho_0)\,\Phi^{-1}(u_D), \qquad (\star)
+$$
+follows from the latent-index model together with joint normality of $(U_0, U_1, V)$. For brevity the intercepts $\alpha_0$ and $\alpha_1 + \phi$ are folded into the $x'\beta_d$ terms by extending $x$ to include a constant.
+
+**Step 1: normalise the latent index.** Since $V$ is continuously distributed, the choice rule $D = \mathbf{1}\{Z\gamma > V\}$ is equivalent to
+$$
+D = \mathbf{1}\bigl\{\,F_V(Z\gamma) > F_V(V)\,\bigr\} \;=\; \mathbf{1}\{P(Z) > U_D\},
+$$
+where $U_D \equiv F_V(V) = \Phi(V/\sigma_V)$ is standard uniform on $[0, 1]$ and $P(Z) \equiv \Phi(Z\gamma/\sigma_V)$. Conditioning on $U_D = u_D$ is therefore equivalent to conditioning on $V/\sigma_V = \Phi^{-1}(u_D)$.
+
+**Step 2: marginal treatment effect.** Substituting the outcome equations,
+$$
+\mathrm{MTE}(x, u_D) = E[\,Y_1 - Y_0 \mid X = x,\, U_D = u_D\,]
+= x'(\beta_1 - \beta_0) + E[\,U_1 - U_0 \mid V/\sigma_V = \Phi^{-1}(u_D)\,].
+$$
+
+**Step 3: conditional means under joint normality.** Because $(U_j, V/\sigma_V)$ is bivariate normal with $\mathrm{Var}(V/\sigma_V) = 1$ and $\mathrm{Cov}(U_j, V/\sigma_V) = \sigma_{V,j}/\sigma_V \equiv \rho_j$, the conditional expectation is linear,
+$$
+E[\,U_j \mid V/\sigma_V = v^\ast\,] = \rho_j\, v^\ast, \qquad j = 0, 1.
+$$
+
+**Step 4: plug in.** Taking $v^\ast = \Phi^{-1}(u_D)$ and differencing,
+$$
+E[\,U_1 - U_0 \mid U_D = u_D\,] = (\rho_1 - \rho_0)\,\Phi^{-1}(u_D),
+$$
+so that $(\star)$ follows directly.
+
+The formula makes two features of the Section 10 DGP transparent. First, the MTE is linear in $\Phi^{-1}(u_D)$ with slope $(\rho_1 - \rho_0)$, which captures the difference in selection on unobservable gains across potential outcomes. Second, $X$ enters as a parallel shift $x'(\beta_1 - \beta_0)$, the conditional ATE. At the calibration, $\rho_1 = \sigma_1 \sigma_V^\ast / |\sigma_V^\ast| = -0.012$ and $\rho_0 = \sigma_0 \sigma_V^\ast / |\sigma_V^\ast| = 0.05$, so $(\rho_1 - \rho_0) = -0.062 < 0$: selection on gains is negative, meaning individuals with high cost of treatment (large $\Phi^{-1}(u_D)$) gain less from it.
+
+\newpage
+
+## Estimate the MTE (HUV Section 5.1)
+
+Under joint normality HUV (p. 4) show that
+$$
+E[Y \mid X, D = 1, P(Z) = p] = (\alpha_1 + \phi) + X\beta_1 \;+\; \rho_1 \underbrace{\Bigl(-\tfrac{\varphi(\Phi^{-1}(p))}{p}\Bigr)}_{\kappa(p)},
+$$
+$$
+E[Y \mid X, D = 0, P(Z) = p] = \alpha_0 + X\beta_0 \;+\; \rho_0 \underbrace{\Bigl(\tfrac{\varphi(\Phi^{-1}(p))}{1-p}\Bigr)}_{\lambda(p)},
+$$
+where $\varphi$ and $\Phi$ are the standard-normal density and cdf. The two parameters $\rho_j = \sigma_{V,j}/\sigma_V$ are therefore identified as the coefficients on the (known) inverse-Mills ratios $\kappa$ and $\lambda$. I implement HUV's Step 1 by running two Heckman-style control-function regressions,
+
+-   regress $Y$ on $(X_1, X_2, \kappa(\widehat{P}))$ in the $D = 1$ subsample, recovering $(\widehat{\alpha_1 + \phi},\ \widehat\beta_1,\ \widehat\rho_1)$;
+
+-   regress $Y$ on $(X_1, X_2, \lambda(\widehat{P}))$ in the $D = 0$ subsample, recovering $(\widehat\alpha_0,\ \widehat\beta_0,\ \widehat\rho_0)$.
+
+Step 2 then plugs these coefficients into $(\star)$.
+
+```{r q2-parametric}
+# Build the two inverse-Mills control functions from the estimated
+# propensity score
+
+    data <- data |> mutate(
+        kappa  = -dnorm(qnorm(ps)) / ps,           # for the D = 1 regression
+        lambda =  dnorm(qnorm(ps)) / (1 - ps)      # for the D = 0 regression
+    )
+
+# Heckman-style selection-corrected regressions
+
+    fit_D1 <- lm(Y ~ X1 + X2 + kappa,  data = filter(data, D == 1))
+    fit_D0 <- lm(Y ~ X1 + X2 + lambda, data = filter(data, D == 0))
+
+# Extract coefficients
+
+    a1phi_hat  <- unname(coef(fit_D1)["(Intercept)"])
+    beta_1_hat <- unname(coef(fit_D1)[c("X1", "X2")])
+    rho_1_hat  <- unname(coef(fit_D1)["kappa"])
+
+    a0_hat     <- unname(coef(fit_D0)["(Intercept)"])
+    beta_0_hat <- unname(coef(fit_D0)[c("X1", "X2")])
+    rho_0_hat  <- unname(coef(fit_D0)["lambda"])
 ```
 
+```{r q2-table}
+rho_1_true <- sigma_1 * sigma_V / abs(sigma_V)      # -0.012
+rho_0_true <- sigma_0 * sigma_V / abs(sigma_V)      #  0.050
 
+q2_tab <- tibble(
+  Parameter = c("alpha_1 + phi", "alpha_0",
+                "beta_{11}", "beta_{21}",
+                "beta_{10}", "beta_{20}",
+                "rho_1", "rho_0", "rho_1 - rho_0"),
+  True      = c(alpha_1 + phi, alpha_0,
+                beta_1[1], beta_1[2],
+                beta_0[1], beta_0[2],
+                rho_1_true, rho_0_true,
+                rho_1_true - rho_0_true),
+  Estimate  = c(a1phi_hat, a0_hat,
+                beta_1_hat[1], beta_1_hat[2],
+                beta_0_hat[1], beta_0_hat[2],
+                rho_1_hat, rho_0_hat,
+                rho_1_hat - rho_0_hat)
+)
 
+kable(q2_tab, digits = 4,
+      caption = "Q2(b) parametric estimates versus true values")
+```
 
+The parametric estimator recovers the $\beta$ coefficients and the slope $\widehat\rho_1 - \widehat\rho_0$ very accurately. The intercepts $\alpha_0$ and $\alpha_1 + \phi$ are less tightly estimated because they are identified off the mean of the inverse-Mills term, but their *difference*, which is what enters the MTE at $E[X]$, comes out close to the population value of $0.22$. The sign pattern $\widehat\rho_1 < 0 < \widehat\rho_0$ confirms the negative selection on gains predicted by the calibration.
 
+\newpage
+
+## Graphical illustration 
+
+Evaluating $(\star)$ at the sample mean of $X$ gives
+$$
+\widehat{\mathrm{MTE}}(\bar X, u_D) = \widehat{(\alpha_1 + \phi)} - \widehat\alpha_0 + \bar X'(\widehat\beta_1 - \widehat\beta_0) + (\widehat\rho_1 - \widehat\rho_0)\,\Phi^{-1}(u_D).
+$$
+I plot this against $u_D$ over the common support identified in Q1, alongside the population MTE implied by the calibration. HUV's Figure 4 uses $v = \Phi^{-1}(u_D)$ on the horizontal axis; plotting against $u_D$ is equivalent up to a monotone transformation and is more readable.
+
+```{r q2-plot, fig.width=6.5, fig.height=4.2, fig.align='center'}
+# Common support of the propensity score (matches the overlap region
+# identified in Q1's binned check)
+
+    p_lo <- max(min(data$ps[data$D == 1]), min(data$ps[data$D == 0]))
+    p_hi <- min(max(data$ps[data$D == 1]), max(data$ps[data$D == 0]))
+    u_grid <- seq(p_lo, p_hi, length.out = 200)
+
+# Sample mean of X
+
+    xbar <- c(mean(data$X1), mean(data$X2))
+
+# Estimated and actual MTE
+
+    mte_hat <- (a1phi_hat - a0_hat) +
+               sum(xbar * (beta_1_hat - beta_0_hat)) +
+               (rho_1_hat - rho_0_hat) * qnorm(u_grid)
+
+    mte_true <- (alpha_1 + phi - alpha_0) +
+                sum(xbar * (beta_1 - beta_0)) +
+                (rho_1_true - rho_0_true) * qnorm(u_grid)
+
+# Plot
+
+    mte_df <- bind_rows(
+        tibble(u = u_grid, MTE = mte_hat,  Curve = "Parametric estimate"),
+        tibble(u = u_grid, MTE = mte_true, Curve = "Actual")
+    )
+
+    ggplot(mte_df, aes(x = u, y = MTE, colour = Curve, linetype = Curve)) +
+        geom_line(linewidth = 0.9) +
+        scale_colour_manual(values = c("Parametric estimate" = "firebrick",
+                                       "Actual"              = "black")) +
+        scale_linetype_manual(values = c("Parametric estimate" = "solid",
+                                         "Actual"              = "dashed")) +
+        labs(x = expression(u[D]),
+             y = expression(MTE(bar(X), u[D])),
+             title = "Q2(c) Parametric MTE (in the spirit of HUV Figure 4)",
+             caption = "Evaluated at the sample mean of X over the common support of P(Z).") +
+        theme_minimal(base_size = 12) +
+        theme(legend.position = "bottom", legend.title = element_blank())
+```
+
+The estimated curve tracks the population MTE tightly across the common support. Consistent with Q2(a), the curve is downward-sloping and nearly linear in $\Phi^{-1}(u_D)$: individuals with low resistance to treatment ($u_D$ near 0) gain the most, and those with high resistance ($u_D$ near 1) gain the least. Because $|\rho_1 - \rho_0| = 0.062$ is small relative to the intercept of $0.22$, treatment-effect heterogeneity across the complier margin is modest, so aggregate parameters (ATE, ATT, ATUT, LATE) will all lie in a narrow band around $0.22$ in subsequent questions.
