@@ -60,7 +60,23 @@ $$
 D = \mathbf{1}\{\gamma_0 + \gamma_1 Z_1 + \gamma_2 Z_2 - V > 0\}
 $$
 
-The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U_0 = \sigma_0 \epsilon$, $V = \sigma_V^* \epsilon$, where $\epsilon \sim N(0,1)$. This ensures joint normality,
+The unobservables share a common factor structure: $U_1 = \sigma_1 \epsilon$, $U_0 = \sigma_0 \epsilon$, $V = \sigma_V^* \epsilon$, where $\epsilon \sim N(0,1)$. This delivers joint normality of $(U_0, U_1, V)$ while leaving $\epsilon$ as a single source of residual variation, which simplifies the benchmark formulas that follow.
+
+## Calibration (HUV Section 10)
+
+| Parameter | Symbol | Value |
+|---------------------------------|------------------------|-----------------------|
+| Outcome intercepts | $\alpha_0,\ \alpha_1,\ \phi$ | $0.02,\ 0.04,\ 0.2$ |
+| $X$ slopes (untreated) | $\beta_0 = (\beta_{10}, \beta_{20})$ | $(0.5,\ 0.1)$ |
+| $X$ slopes (treated) | $\beta_1 = (\beta_{11}, \beta_{21})$ | $(0.8,\ 0.4)$ |
+| Index coefficients | $\gamma_0,\ \gamma_1,\ \gamma_2$ | $0.2,\ 0.3,\ 0.1$ |
+| Factor loadings | $\sigma_1,\ \sigma_0,\ \sigma_V^\ast$ | $0.012,\ -0.05,\ -1$ |
+| Covariate distributions | $X_1 \sim N(-2, 4),\ X_2 \sim N(2, 4)$ | |
+| Instrument distributions | $Z_1 \sim N(-1, 9),\ Z_2 \sim N(1, 9)$ | |
+| Sample size | $N$ | $5{,}000$ |
+| Seed | | $34837$ |
+
+Two benchmarks follow mechanically from the calibration and will reappear in every question: $\rho_j \equiv \sigma_{V,j}/\sigma_V = \sigma_j \sigma_V^\ast / |\sigma_V^\ast|$ gives $\rho_1 = -0.012,\ \rho_0 = 0.05$ and slope $(\rho_1 - \rho_0) = -0.062$; and the population ATE at the marginal means of $X$ is $(\alpha_1 + \phi - \alpha_0) + E[X]'(\beta_1 - \beta_0) = 0.22$.
 
 ```{r q1-simulate}
 # Seed and sample size
@@ -359,3 +375,156 @@ I plot this against $u_D$ over the common support identified in Q1, alongside th
 ```
 
 The estimated curve tracks the population MTE tightly across the common support. Consistent with Q2(a), the curve is downward-sloping and nearly linear in $\Phi^{-1}(u_D)$: individuals with low resistance to treatment ($u_D$ near 0) gain the most, and those with high resistance ($u_D$ near 1) gain the least. Because $|\rho_1 - \rho_0| = 0.062$ is small relative to the intercept of $0.22$, treatment-effect heterogeneity across the complier margin is modest, so aggregate parameters (ATE, ATT, ATUT, LATE) will all lie in a narrow band around $0.22$ in subsequent questions.
+
+\newpage
+
+# Question 3
+
+## Polynomial estimator (HUV Section 5.2)
+
+Dropping the joint-normality assumption, HUV (p. 5) approximate the unknown function $K(p)$ in
+$$
+E[Y \mid X = x, P(Z) = p] = \alpha_0 + x'\beta_0 + \bigl((\alpha_1 + \phi - \alpha_0) + x'(\beta_1 - \beta_0)\bigr)p + K(p)
+$$
+by a polynomial of degree $\vartheta$, $K(p) \approx \sum_{i=1}^{\vartheta} \phi_i p^i$. The linear-in-$p$ term from $(\alpha_1 + \phi - \alpha_0)$ and the linear term of $K$ are not separately identified, so HUV absorb them into a single coefficient $\phi_1$. Step 1 fits
+$$
+Y = \alpha_0 + X'\beta_0 + \bigl(X'(\beta_1 - \beta_0)\bigr)\widehat{P} + \sum_{i=1}^{\vartheta} \phi_i \widehat{P}^{\,i} + \xi, \qquad (\dagger)
+$$
+by OLS. Step 2 differentiates the fit in $p$ to recover the MTE:
+$$
+\widehat{\mathrm{MTE}}_{\text{Pol}}(x, u_D) = x'\bigl(\widehat{\beta_1 - \beta_0}\bigr) + \sum_{i=1}^{\vartheta} i\,\widehat\phi_i\, u_D^{\,i-1}.
+$$
+
+I fit $(\dagger)$ for $\vartheta \in \{2, 3, 4\}$ to gauge sensitivity to the choice of polynomial degree.
+
+```{r q3-polynomial}
+# Helper: fit HUV's Section 5.2 regression with polynomial of degree d
+
+    fit_poly <- function(d, df) {
+        ps_terms <- paste0("I(ps^", 1:d, ")", collapse = " + ")
+        f <- as.formula(
+            paste("Y ~ X1 + X2 + I(X1*ps) + I(X2*ps) +", ps_terms)
+        )
+        lm(f, data = df)
+    }
+
+    fit_q3 <- list(
+        d2 = fit_poly(2, data),
+        d3 = fit_poly(3, data),
+        d4 = fit_poly(4, data)
+    )
+
+# Helper: MTE from a fitted polynomial at a grid of u values
+
+    mte_poly <- function(m, u, xbar) {
+        cc <- coef(m)
+        b1m0 <- c(cc["I(X1 * ps)"], cc["I(X2 * ps)"])
+        intercept_X <- sum(xbar * b1m0)
+
+        # Polynomial coefficients phi_i on ps^i, in order i = 1, 2, ...
+        phi_names <- paste0("I(ps^", 1:(length(cc) - 5), ")")
+        phi <- cc[phi_names]
+
+        vals <- rep(intercept_X, length(u))
+        for (i in seq_along(phi)) {
+            vals <- vals + i * phi[i] * u^(i - 1)
+        }
+        as.numeric(vals)
+    }
+```
+
+```{r q3-coef-table}
+# Compare the fitted parameters across polynomial degrees
+
+    pull_row <- function(m, nm) {
+        cc <- coef(m)
+        if (nm %in% names(cc)) unname(cc[nm]) else NA_real_
+    }
+
+    q3_coef <- tibble(
+        Parameter = c("(Intercept)", "X1", "X2",
+                      "I(X1 * ps)", "I(X2 * ps)",
+                      "I(ps^1)", "I(ps^2)", "I(ps^3)", "I(ps^4)"),
+        `deg 2`   = sapply(q3_coef_names <- c("(Intercept)","X1","X2",
+                                              "I(X1 * ps)","I(X2 * ps)",
+                                              "I(ps^1)","I(ps^2)","I(ps^3)","I(ps^4)"),
+                           pull_row, m = fit_q3$d2),
+        `deg 3`   = sapply(q3_coef_names, pull_row, m = fit_q3$d3),
+        `deg 4`   = sapply(q3_coef_names, pull_row, m = fit_q3$d4)
+    )
+
+    kable(q3_coef, digits = 4,
+          caption = "Q3 fitted coefficients across polynomial degrees")
+```
+
+```{r q3-ate-table}
+# ATE at sample mean: integrate MTE(u) over u in (0, 1)
+# For a polynomial MTE, this equals x'(beta_1 - beta_0) + sum_i phi_i.
+
+    xbar <- c(mean(data$X1), mean(data$X2))
+
+    ate_from_poly <- function(m) {
+        cc <- coef(m)
+        b1m0 <- c(cc["I(X1 * ps)"], cc["I(X2 * ps)"])
+        phi_names <- grep("^I\\(ps\\^", names(cc), value = TRUE)
+        sum(xbar * b1m0) + sum(cc[phi_names])
+    }
+
+    q3_ate <- tibble(
+        Degree = c("deg 2", "deg 3", "deg 4"),
+        ATE    = sapply(fit_q3, ate_from_poly),
+        Truth  = 0.22
+    )
+
+    kable(q3_ate, digits = 4,
+          caption = "Q3 ATE integrated from the estimated MTE")
+```
+
+\newpage
+
+## Graphical comparison and sensitivity
+
+```{r q3-plot, fig.width=6.5, fig.height=4.2, fig.align='center'}
+# Common support, reused from Q2
+
+    p_lo <- max(min(data$ps[data$D == 1]), min(data$ps[data$D == 0]))
+    p_hi <- min(max(data$ps[data$D == 1]), max(data$ps[data$D == 0]))
+    u_grid <- seq(p_lo, p_hi, length.out = 200)
+
+# Actual MTE at the sample mean of X (same formula as Q2(c))
+
+    mte_true <- (alpha_1 + phi - alpha_0) +
+                sum(xbar * (beta_1 - beta_0)) +
+                (rho_1_true - rho_0_true) * qnorm(u_grid)
+
+# Assemble the plot data frame
+
+    mte_df_q3 <- bind_rows(
+        tibble(u = u_grid, MTE = mte_true,                       Curve = "Actual"),
+        tibble(u = u_grid, MTE = mte_poly(fit_q3$d2, u_grid, xbar), Curve = "Polynomial (deg 2)"),
+        tibble(u = u_grid, MTE = mte_poly(fit_q3$d3, u_grid, xbar), Curve = "Polynomial (deg 3)"),
+        tibble(u = u_grid, MTE = mte_poly(fit_q3$d4, u_grid, xbar), Curve = "Polynomial (deg 4)")
+    )
+
+    ggplot(mte_df_q3, aes(x = u, y = MTE, colour = Curve, linetype = Curve)) +
+        geom_line(linewidth = 0.8) +
+        scale_colour_manual(values = c("Actual"               = "black",
+                                       "Polynomial (deg 2)"   = "blue",
+                                       "Polynomial (deg 3)"   = "green",
+                                       "Polynomial (deg 4)"   = "red")) +
+        scale_linetype_manual(values = c("Actual"             = "dashed",
+                                         "Polynomial (deg 2)" = "solid",
+                                         "Polynomial (deg 3)" = "solid",
+                                         "Polynomial (deg 4)" = "solid")) +
+        labs(x = expression(u[D]),
+             y = expression(MTE(bar(X), u[D])),
+             title = "Q3 Polynomial MTE: sensitivity to polynomial degree",
+             caption = "Evaluated at the sample mean of X over the common support of P(Z).") +
+        theme_minimal(base_size = 12) +
+        theme(legend.position = "bottom", legend.title = element_blank())
+```
+
+All three polynomial fits track the actual MTE reasonably well across the interior of the common support, and the implied ATEs lie within a few hundredths of the true value of $0.22$. The quadratic ($\vartheta = 2$) imposes a linear MTE in $u_D$, which is slightly mis-shaped relative to the truth (which is linear in $\Phi^{-1}(u_D)$, not $u_D$); the cubic and quartic pick up the mild curvature at the tails of $u_D$ and are almost indistinguishable from one another.
+
+Sensitivity to $\vartheta$ is therefore limited here because the true MTE has little curvature under the HUV Section 10 calibration: $|\rho_1 - \rho_0| = 0.062$ is small, so $K(p)$ is a nearly flat function of $p$ and any low-order polynomial does the job. The cost of higher $\vartheta$ is a more volatile fit near the edges of the common support (where the polynomial is only weakly pinned down by the data); the gain is better capture of genuine curvature. In practice $\vartheta = 3$ or $\vartheta = 4$ is the sensible default, consistent with HUV's choice of $\vartheta = 4$ in their Monte Carlo.
+
