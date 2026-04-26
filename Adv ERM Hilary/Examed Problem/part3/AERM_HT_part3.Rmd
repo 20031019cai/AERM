@@ -763,7 +763,7 @@ $\widehat{\mathrm{MTE}}_{\text{Semi}}(x, u_D) = x'\widehat{(\beta_1 - \beta_0)} 
 
     ggplot() +
         geom_ribbon(data = ribbon_q4, aes(x = u, ymin = lo, ymax = hi),
-                    fill = "green", alpha = 0.18) +
+                    fill = "red", alpha = 0.18) +
         geom_line(data = mte_df_q4,
                   aes(x = u, y = MTE, colour = Curve, linetype = Curve),
                   linewidth = 0.9) +
