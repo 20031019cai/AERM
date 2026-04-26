@@ -1,7 +1,7 @@
 ---
 title: "Advanced Empirical Research Methods Hilary 2025/26"
 author: 'Candidate ID: 1091806'
-date: "2026-04-24"
+date: "2026-04-20"
 output:
   pdf_document:
     toc: true
@@ -44,6 +44,9 @@ editor_options:
 library(tidyverse)
 library(ggplot2)
 library(knitr)
+
+# Number of bootstrap replications used for confidence ribbons throughout
+B <- 50
 ```
 
 \newpage
@@ -166,7 +169,7 @@ ggplot(data, aes(x = ps, fill = factor(D))) +
   labs(x = "Estimated propensity score",
        y = "Density",
        fill = "Treatment") +
-  scale_fill_manual(values = c("0" = "steelblue", "1" = "tomato"),
+  scale_fill_manual(values = c("0" = "purple", "1" = "blue"),
                     labels = c("D = 0", "D = 1")) +
   theme_minimal(base_size = 13)
 ```
@@ -331,7 +334,7 @@ $$
 $$
 I plot this against $u_D$ over the common support identified in Q1, alongside the population MTE implied by the calibration. HUV's Figure 4 uses $v = \Phi^{-1}(u_D)$ on the horizontal axis; plotting against $u_D$ is equivalent up to a monotone transformation and is more readable.
 
-```{r q2-plot, fig.width=6.5, fig.height=4.2, fig.align='center'}
+```{r q2-grid}
 # Common support of the propensity score (matches the overlap region
 # identified in Q1's binned check)
 
@@ -352,26 +355,67 @@ I plot this against $u_D$ over the common support identified in Q1, alongside th
     mte_true <- (alpha_1 + phi - alpha_0) +
                 sum(xbar * (beta_1 - beta_0)) +
                 (rho_1_true - rho_0_true) * qnorm(u_grid)
+```
 
-# Plot
+```{r q2-bootstrap}
+# Nonparametric bootstrap CIs for the parametric MTE: resample observations
+# with replacement, re-fit the probit propensity score and the two
+# selection-corrected regressions, evaluate MTE on the original u_grid
 
-    mte_df <- bind_rows(
-        tibble(u = u_grid, MTE = mte_hat,  Curve = "Parametric estimate"),
-        tibble(u = u_grid, MTE = mte_true, Curve = "Actual")
-    )
+    set.seed(34837)
+    mte_boot_param <- matrix(NA_real_, nrow = B, ncol = length(u_grid))
 
-    ggplot(mte_df, aes(x = u, y = MTE, colour = Curve, linetype = Curve)) +
-        geom_line(linewidth = 0.9) +
-        scale_colour_manual(values = c("Parametric estimate" = "firebrick",
-                                       "Actual"              = "black")) +
-        scale_linetype_manual(values = c("Parametric estimate" = "solid",
-                                         "Actual"              = "dashed")) +
-        labs(x = expression(u[D]),
-             y = expression(MTE(bar(X), u[D])),
-             title = "Q2(c) Parametric MTE (in the spirit of HUV Figure 4)",
-             caption = "Evaluated at the sample mean of X over the common support of P(Z).") +
-        theme_minimal(base_size = 12) +
-        theme(legend.position = "bottom", legend.title = element_blank())
+    for (b in seq_len(B)) {
+        rs <- sample(nrow(data), replace = TRUE)
+        db <- data[rs, ]
+        ps_b <- glm(D ~ Z1 + Z2, family = binomial(link = "probit"), data = db)
+        db$ps_b     <- predict(ps_b, type = "response")
+        db$kappa_b  <- -dnorm(qnorm(db$ps_b)) / db$ps_b
+        db$lambda_b <-  dnorm(qnorm(db$ps_b)) / (1 - db$ps_b)
+
+        f1 <- lm(Y ~ X1 + X2 + kappa_b,  data = db, subset = D == 1)
+        f0 <- lm(Y ~ X1 + X2 + lambda_b, data = db, subset = D == 0)
+
+        a1phi_b <- coef(f1)["(Intercept)"]
+        b1_b    <- coef(f1)[c("X1", "X2")]
+        r1_b    <- coef(f1)["kappa_b"]
+        a0_b    <- coef(f0)["(Intercept)"]
+        b0_b    <- coef(f0)[c("X1", "X2")]
+        r0_b    <- coef(f0)["lambda_b"]
+
+        mte_boot_param[b, ] <- (a1phi_b - a0_b) +
+                               sum(xbar * (b1_b - b0_b)) +
+                               (r1_b - r0_b) * qnorm(u_grid)
+    }
+
+    mte_param_lo <- apply(mte_boot_param, 2, quantile, 0.025, na.rm = TRUE)
+    mte_param_hi <- apply(mte_boot_param, 2, quantile, 0.975, na.rm = TRUE)
+```
+
+```{r q2-plot, fig.width=6.5, fig.height=4.2, fig.align='center'}
+mte_df <- tibble(
+    u  = u_grid,
+    Estimate = mte_hat,
+    Actual   = mte_true,
+    lo = mte_param_lo,
+    hi = mte_param_hi
+)
+
+ggplot(mte_df, aes(x = u)) +
+    geom_ribbon(aes(ymin = lo, ymax = hi), fill = "red", alpha = 0.18) +
+    geom_line(aes(y = Estimate, colour = "Parametric estimate"),
+              linewidth = 0.9) +
+    geom_line(aes(y = Actual, colour = "Actual"),
+              linewidth = 0.9, linetype = "dashed") +
+    scale_colour_manual(values = c("Parametric estimate" = "red",
+                                   "Actual"              = "black")) +
+    labs(x = expression(u[D]),
+         y = expression(MTE(bar(X), u[D])),
+         title = "Q2(c) Parametric MTE (in the spirit of HUV Figure 4)",
+         caption = sprintf("Shaded band: 95%% bootstrap CI from B = %d resamples.", B),
+         colour = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "bottom")
 ```
 
 The estimated curve tracks the population MTE tightly across the common support. Consistent with Q2(a), the curve is downward-sloping and nearly linear in $\Phi^{-1}(u_D)$: individuals with low resistance to treatment ($u_D$ near 0) gain the most, and those with high resistance ($u_D$ near 1) gain the least. Because $|\rho_1 - \rho_0| = 0.062$ is small relative to the intercept of $0.22$, treatment-effect heterogeneity across the complier margin is modest, so aggregate parameters (ATE, ATT, ATUT, LATE) will all lie in a narrow band around $0.22$ in subsequent questions.
@@ -484,13 +528,28 @@ I fit $(\dagger)$ for $\vartheta \in \{2, 3, 4\}$ to gauge sensitivity to the ch
 
 ## Graphical comparison and sensitivity
 
+```{r q3-bootstrap}
+# Bootstrap CI for the polynomial MTE at the preferred degree (4).
+# Multi-degree comparison curves are kept ribbon-free below to keep the
+# sensitivity plot readable.
+
+    set.seed(34837)
+    mte_boot_poly <- matrix(NA_real_, nrow = B, ncol = length(u_grid))
+
+    for (b in seq_len(B)) {
+        rs <- sample(nrow(data), replace = TRUE)
+        db <- data[rs, ]
+        ps_b <- glm(D ~ Z1 + Z2, family = binomial(link = "probit"), data = db)
+        db$ps <- predict(ps_b, type = "response")
+        fit_b <- fit_poly(4, db)
+        mte_boot_poly[b, ] <- mte_poly(fit_b, u_grid, xbar)
+    }
+
+    mte_poly_lo <- apply(mte_boot_poly, 2, quantile, 0.025, na.rm = TRUE)
+    mte_poly_hi <- apply(mte_boot_poly, 2, quantile, 0.975, na.rm = TRUE)
+```
+
 ```{r q3-plot, fig.width=6.5, fig.height=4.2, fig.align='center'}
-# Common support, reused from Q2
-
-    p_lo <- max(min(data$ps[data$D == 1]), min(data$ps[data$D == 0]))
-    p_hi <- min(max(data$ps[data$D == 1]), max(data$ps[data$D == 0]))
-    u_grid <- seq(p_lo, p_hi, length.out = 200)
-
 # Actual MTE at the sample mean of X (same formula as Q2(c))
 
     mte_true <- (alpha_1 + phi - alpha_0) +
@@ -500,24 +559,32 @@ I fit $(\dagger)$ for $\vartheta \in \{2, 3, 4\}$ to gauge sensitivity to the ch
 # Assemble the plot data frame
 
     mte_df_q3 <- bind_rows(
-        tibble(u = u_grid, MTE = mte_true,   
+        tibble(u = u_grid, MTE = mte_true,
                Curve = "Actual"),
-        
-        tibble(u = u_grid, 
-               MTE = mte_poly(fit_q3$d2, u_grid, xbar), 
+
+        tibble(u = u_grid,
+               MTE = mte_poly(fit_q3$d2, u_grid, xbar),
                Curve = "Polynomial (deg 2)"),
-        
-        tibble(u = u_grid, 
-               MTE = mte_poly(fit_q3$d3, u_grid, xbar), 
+
+        tibble(u = u_grid,
+               MTE = mte_poly(fit_q3$d3, u_grid, xbar),
                Curve = "Polynomial (deg 3)"),
-        
-        tibble(u = u_grid, 
-               MTE = mte_poly(fit_q3$d4, u_grid, xbar), 
+
+        tibble(u = u_grid,
+               MTE = mte_poly(fit_q3$d4, u_grid, xbar),
                Curve = "Polynomial (deg 4)")
     )
 
-    ggplot(mte_df_q3, aes(x = u, y = MTE, colour = Curve, linetype = Curve)) +
-        geom_line(linewidth = 0.8) +
+# Bootstrap ribbon attached to the degree-4 estimate
+
+    ribbon_df <- tibble(u = u_grid, lo = mte_poly_lo, hi = mte_poly_hi)
+
+    ggplot() +
+        geom_ribbon(data = ribbon_df, aes(x = u, ymin = lo, ymax = hi),
+                    fill = "red", alpha = 0.18) +
+        geom_line(data = mte_df_q3,
+                  aes(x = u, y = MTE, colour = Curve, linetype = Curve),
+                  linewidth = 0.8) +
         scale_colour_manual(values = c("Actual"               = "black",
                                        "Polynomial (deg 2)"   = "blue",
                                        "Polynomial (deg 3)"   = "green",
@@ -529,7 +596,7 @@ I fit $(\dagger)$ for $\vartheta \in \{2, 3, 4\}$ to gauge sensitivity to the ch
         labs(x = expression(u[D]),
              y = expression(MTE(bar(X), u[D])),
              title = "Q3 Polynomial MTE: sensitivity to polynomial degree",
-             caption = "Evaluated at the sample mean of X over the common support of P(Z).") +
+             caption = sprintf("Shaded band: 95%% bootstrap CI for degree 4 (B = %d).", B)) +
         theme_minimal(base_size = 12) +
         theme(legend.position = "bottom", legend.title = element_blank())
 ```
@@ -537,4 +604,465 @@ I fit $(\dagger)$ for $\vartheta \in \{2, 3, 4\}$ to gauge sensitivity to the ch
 All three polynomial fits track the actual MTE reasonably well across the interior of the common support, and the implied ATEs lie within a few hundredths of the true value of $0.22$. The quadratic ($\vartheta = 2$) imposes a linear MTE in $u_D$, which is slightly mis-shaped relative to the truth (which is linear in $\Phi^{-1}(u_D)$, not $u_D$); the cubic and quartic pick up the mild curvature at the tails of $u_D$ and are almost indistinguishable from one another.
 
 Sensitivity to $\vartheta$ is therefore limited here because the true MTE has little curvature under the HUV Section 10 calibration: $|\rho_1 - \rho_0| = 0.062$ is small, so $K(p)$ is a nearly flat function of $p$ and any low-order polynomial does the job. The cost of higher $\vartheta$ is a more volatile fit near the edges of the common support (where the polynomial is only weakly pinned down by the data); the gain is better capture of genuine curvature. In practice $\vartheta = 3$ or $\vartheta = 4$ is the sensible default, consistent with HUV's choice of $\vartheta = 4$ in their Monte Carlo.
+
+\newpage
+
+# Question 4
+
+## Semiparametric estimator (HUV Section 7)
+
+HUV's Section 7 combines the polynomial first stage with a nonparametric second stage: the polynomial is used only to purge $Y$ of its dependence on $X$, and the derivative of $K(p)$ is then estimated nonparametrically. The four-step algorithm is
+
+1. **Step 1:** Fit the polynomial control-function regression
+$Y = \alpha_0 + X'\beta_0 + \bigl(X'(\beta_1-\beta_0)\bigr)P(Z) + \sum_{i=1}^{d} \psi_i P(Z)^i + \varsigma$
+by OLS, with degree $d$.
+
+2. **Step 2:** Form the residualised outcome
+$\widetilde{Y}_i = Y_i - \widehat\alpha_0 - X_i'\widehat\beta_0 - \bigl(X_i'\widehat{(\beta_1-\beta_0)}\bigr)\widehat{P}_i$,
+which, up to estimation error, equals $K(\widehat{P}_i) + \varsigma_i$.
+
+3. **Step 3:** Estimate $\partial K(p)/\partial p$ nonparametrically by a local polynomial regression of $\widetilde{Y}$ on $\widehat{P}$ and read off the local linear slope.
+
+4. **Step 4:** Assemble
+$\widehat{\mathrm{MTE}}_{\text{Semi}}(x, u_D) = x'\widehat{(\beta_1 - \beta_0)} + \widehat{\partial K(p)/\partial p}\Big|_{p = u_D}$.
+
+## Choices for Step 2 and Step 3
+
+**Step 2** requires a Step 1 polynomial degree $d$. I take $d = 4$, matching HUV's Monte Carlo choice in their Table 2 and the preferred specification in Q3. Only $(\widehat\alpha_0,\ \widehat\beta_0,\ \widehat{\beta_1-\beta_0})$ enter the residualisation; the estimated $\widehat\psi_i$ are discarded because $K(p)$ will be re-estimated nonparametrically in Step 3. Using a high-degree polynomial in Step 1 therefore costs little: the extra flexibility shields $(\widehat{\beta_1-\beta_0})$ against mis-specification of $K$ without biasing the downstream local regression.
+
+**Step 3** has three tuning choices:
+
+-   *Local polynomial order.* I use a local quadratic (order 2). To estimate a first derivative, local polynomial theory (Fan and Gijbels, 1996) recommends an order equal to $\nu + 1 = 2$: a local linear fit estimates the level but attenuates the slope at interior points, whereas a local quadratic fit has leading bias of order $h^2$ for $\partial K/\partial p$ and is standard for derivative estimation.
+
+-   *Kernel.* I use the standard-normal (Gaussian) kernel $\Psi(u) = \phi(u)$. I experimented with Epanechnikov, which is asymptotically MISE-optimal, but under this DGP its compact support makes the derivative estimate very bandwidth-sensitive (small $h$ leaves few effective observations, large $h$ over-smooths sharply at boundaries). The Gaussian kernel has non-compact support, so every evaluation point uses all the data with decaying weights; this substantially reduces the bandwidth sensitivity of the derivative estimate here, where the true $\partial K/\partial p$ is small relative to the residual variance in $\widetilde{Y}$.
+
+-   *Bandwidth.* The optimal AMISE rate for local-quadratic estimation of a first derivative is $N^{-1/(2p+3)} = N^{-1/7}$ with $p=2$, $\nu=1$. The leading constant in the Fan-Gijbels rule of thumb for derivative estimation is materially larger than the Silverman constant for the level, because the derivative is a harder object to estimate. I take $h = 0.20$: this lands comfortably in the band where the sensitivity analysis (below) shows the estimate has stabilised, is a round number well inside the common support of $\widehat{P}$, and sits near the value Fan-Gijbels's formula gives when I plug in $\widehat{\mathrm{sd}}(\widehat{P}) \approx 0.29$ and $\widehat{\mathrm{sd}}(\widetilde{Y}) \approx 0.37$. I report sensitivity to $h \in \{0.10,\ 0.15,\ 0.20,\ 0.25,\ 0.30\}$ below.
+
+```{r q4-semiparametric}
+# Step 1: reuse the degree-4 polynomial from Q3
+
+    fit_step1 <- fit_q3$d4
+    cc        <- coef(fit_step1)
+    a0_s      <- unname(cc["(Intercept)"])
+    b0_s      <- unname(cc[c("X1", "X2")])
+    b1m0_s    <- unname(c(cc["I(X1 * ps)"], cc["I(X2 * ps)"]))
+
+# Step 2: residualise Y
+
+    data <- data |> mutate(
+        Y_tilde = Y - a0_s - X1 * b0_s[1] - X2 * b0_s[2] -
+                  (X1 * b1m0_s[1] + X2 * b1m0_s[2]) * ps
+    )
+
+# Step 3: local quadratic regression of Y_tilde on ps
+# Gaussian kernel, bandwidth h. At each evaluation point p0:
+#   regress Y_tilde on (ps - p0) + (ps - p0)^2 with weights
+#   w_i = phi((ps_i - p0)/h). The coefficient on the linear term
+#   is the estimated derivative dK/dp at p0.
+
+    local_deriv <- function(p0, x, y, h) {
+        w  <- dnorm((x - p0) / h)
+        dx <- x - p0
+        fit <- lm(y ~ dx + I(dx^2), weights = w)
+        unname(coef(fit)["dx"])
+    }
+
+    h_q4 <- 0.20
+```
+
+```{r q4-bw-table}
+# Compute derivative estimates on the common-support grid from Q2/Q3
+
+    deriv_est <- sapply(u_grid, local_deriv,
+                        x = data$ps, y = data$Y_tilde, h = h_q4)
+
+# Step 4: MTE at the sample mean of X
+
+    mte_semi <- sum(xbar * b1m0_s) + deriv_est
+
+# ATE as the average of MTE over the grid (uniform weight on u)
+
+    ate_semi <- mean(mte_semi, na.rm = TRUE)
+
+# Bandwidth sensitivity
+
+    bw_grid <- c(0.10, 0.15, 0.20, 0.25, 0.30)
+
+    bw_tab <- tibble(
+        bandwidth = bw_grid,
+        `MTE at u = 0.25` = sapply(bw_grid, function(h)
+            sum(xbar * b1m0_s) +
+            local_deriv(0.25, data$ps, data$Y_tilde, h)),
+        `MTE at u = 0.50` = sapply(bw_grid, function(h)
+            sum(xbar * b1m0_s) +
+            local_deriv(0.50, data$ps, data$Y_tilde, h)),
+        `MTE at u = 0.75` = sapply(bw_grid, function(h)
+            sum(xbar * b1m0_s) +
+            local_deriv(0.75, data$ps, data$Y_tilde, h))
+    )
+
+    kable(bw_tab, digits = 4,
+          caption = "Q4 sensitivity of the semiparametric MTE to the bandwidth h")
+```
+
+## Graphical comparison with the parametric and polynomial estimators
+
+```{r q4-bootstrap}
+# Bootstrap CI for the semiparametric (Section 7) MTE: resample,
+# re-fit Step 1 polynomial, residualise, re-run local quadratic on u_grid
+
+    set.seed(34837)
+    mte_boot_semi <- matrix(NA_real_, nrow = B, ncol = length(u_grid))
+
+    for (b in seq_len(B)) {
+        rs <- sample(nrow(data), replace = TRUE)
+        db <- data[rs, ]
+        ps_b <- glm(D ~ Z1 + Z2, family = binomial(link = "probit"), data = db)
+        db$ps <- predict(ps_b, type = "response")
+
+        # Step 1 polynomial degree 4 on the bootstrap sample
+        fit_b   <- fit_poly(4, db)
+        cc_b    <- coef(fit_b)
+        a0_b    <- unname(cc_b["(Intercept)"])
+        b0_b    <- unname(cc_b[c("X1", "X2")])
+        b1m0_b  <- unname(c(cc_b["I(X1 * ps)"], cc_b["I(X2 * ps)"]))
+
+        # Step 2 residualise
+        db$Y_tilde <- db$Y - a0_b - db$X1 * b0_b[1] - db$X2 * b0_b[2] -
+                      (db$X1 * b1m0_b[1] + db$X2 * b1m0_b[2]) * db$ps
+
+        # Step 3 local quadratic, Gaussian kernel, h_q4 (= 0.20)
+        deriv_b <- sapply(u_grid, local_deriv,
+                          x = db$ps, y = db$Y_tilde, h = h_q4)
+
+        mte_boot_semi[b, ] <- sum(xbar * b1m0_b) + deriv_b
+    }
+
+    mte_semi_lo <- apply(mte_boot_semi, 2, quantile, 0.025, na.rm = TRUE)
+    mte_semi_hi <- apply(mte_boot_semi, 2, quantile, 0.975, na.rm = TRUE)
+```
+
+```{r q4-plot, fig.width=6.5, fig.height=4.5, fig.align='center'}
+# Build the comparison data frame
+
+    mte_df_q4 <- bind_rows(
+        tibble(u = u_grid, MTE = mte_true,
+               Curve = "Actual"),
+
+        tibble(u = u_grid, MTE = mte_hat,
+               Curve = "Parametric (Q2)"),
+
+        tibble(u = u_grid, MTE = mte_poly(fit_q3$d4, u_grid, xbar),
+               Curve = "Polynomial deg 4 (Q3)"),
+
+        tibble(u = u_grid, MTE = mte_semi,
+               Curve = "Semiparametric (Q4)")
+    )
+
+    ribbon_q4 <- tibble(u = u_grid, lo = mte_semi_lo, hi = mte_semi_hi)
+
+    ggplot() +
+        geom_ribbon(data = ribbon_q4, aes(x = u, ymin = lo, ymax = hi),
+                    fill = "green", alpha = 0.18) +
+        geom_line(data = mte_df_q4,
+                  aes(x = u, y = MTE, colour = Curve, linetype = Curve),
+                  linewidth = 0.9) +
+        scale_colour_manual(values = c("Actual"                = "black",
+                                       "Parametric (Q2)"       = "red",
+                                       "Polynomial deg 4 (Q3)" = "blue",
+                                       "Semiparametric (Q4)"   = "green")) +
+        scale_linetype_manual(values = c("Actual"              = "dashed",
+                                         "Parametric (Q2)"     = "solid",
+                                         "Polynomial deg 4 (Q3)" = "solid",
+                                         "Semiparametric (Q4)" = "solid")) +
+        labs(x = expression(u[D]),
+             y = expression(MTE(bar(X), u[D])),
+             title = "Q4 Semiparametric MTE compared with Q2/Q3 estimates",
+             caption = sprintf("Local quadratic, Gaussian kernel, h = %.2f. Shaded: 95%% bootstrap CI for Q4 (B = %d).",
+                               h_q4, B)) +
+        theme_minimal(base_size = 12) +
+        theme(legend.position = "bottom", legend.title = element_blank())
+```
+
+At $h = 0.20$ the semiparametric curve sits almost on top of the true MTE across the interior of the common support, matching the parametric and polynomial curves to within a few hundredths. Mild drift at the edges of $u_D \in (0, 1)$ reflects the standard boundary-bias pattern of local polynomial smoothers: when one side of the kernel window runs out of data the fitted slope is pulled toward zero. The bandwidth-sensitivity table shows that the estimator is stable: once $h \ge 0.15$, $\widehat{\mathrm{MTE}}$ at $u_D \in \{0.25,\ 0.50,\ 0.75\}$ stays within a few hundredths of the true $(0.286,\ 0.244,\ 0.202)$, while smaller bandwidths are noisier because $K(p)$ has very little curvature in this DGP ($|\rho_1 - \rho_0| = 0.062$) and the signal in $\partial K/\partial p$ is small relative to residual noise in $\widetilde Y$.
+
+The punchline for Q4 is that the semiparametric estimator matches the parametric Heckman curve without imposing joint normality, at a modest precision cost: bandwidth choice matters a little more than polynomial degree did in Q3, and the tails of $u_D$ are less reliable than the interior. Its payoff comes in Q5, where normality fails and the parametric estimator becomes biased.
+
+\newpage
+
+# Question 5
+
+## An alternative DGP with skewed unobservables
+
+I violate the joint-normality assumption by replacing the standard normal factor $\epsilon$ with a **standardised chi-squared with 3 degrees of freedom**,
+$$
+\varepsilon \;=\; \frac{\chi_3^2 - 3}{\sqrt{6}}, \qquad \mathrm{E}(\varepsilon) = 0,\ \mathrm{Var}(\varepsilon) = 1,\ \mathrm{skew}(\varepsilon) \approx 1.63,
+$$
+and route it through the same factor structure $U_1 = \sigma_1 \varepsilon,\ U_0 = \sigma_0 \varepsilon,\ V = \sigma_V^\ast \varepsilon$. Mean zero and unit variance are preserved, so the only change is distributional shape: $V$ is now skewed and no longer normal.
+
+Two further design choices isolate the effect of the distributional violation.
+
+-   *Amplified selection on gains.* I raise $|\sigma_1|$ and $|\sigma_0|$ to $0.3$ from the HUV baseline of $0.012$ and $-0.05$. This lifts $(\rho_1 - \rho_0)$ from $-0.062$ to $-0.6$, so the MTE has an order-of-magnitude more curvature and the distributional assumption matters numerically. With the HUV calibration the distributional channel is too small relative to sampling noise to produce visible differences across estimators.
+
+-   *Oracle propensity score.* A probit first stage is misspecified under non-normal $V$, which would confound the distribution channel we are trying to study with a separate mis-specification channel. Because we know the DGP, we can compute the true $P(Z) = F_V(\gamma_0 + \gamma_1 Z_1 + \gamma_2 Z_2)$ exactly and feed it to all three estimators. For $V = -\varepsilon$ with $\varepsilon$ as above,
+$$
+F_V(v) \;=\; \Pr\!\left(\chi_3^2 \ge 3 - v\sqrt{6}\right).
+$$
+
+All other calibration parameters ($\alpha,\ \beta,\ \gamma,\ X,\ Z$) match HUV Section 10.
+
+```{r q5-simulate}
+# Non-normal DGP: keep X, Z from Q1; new eps and new sigma xxloadings
+
+    sigma_1_q5 <- 0.3
+    sigma_0_q5 <- -0.3
+    sigma_V_q5 <- -1     # same as Q1
+
+    set.seed(34837)
+    eps_q5 <- (rchisq(N, df = 3) - 3) / sqrt(6)
+
+    U1_q5 <- sigma_1_q5 * eps_q5
+    U0_q5 <- sigma_0_q5 * eps_q5
+    V_q5  <- sigma_V_q5 * eps_q5
+
+    Y1_q5 <- alpha_1 + phi + beta_1[1]*X1 + beta_1[2]*X2 + U1_q5
+    Y0_q5 <- alpha_0       + beta_0[1]*X1 + beta_0[2]*X2 + U0_q5
+    D_q5  <- as.integer(gamma_0 + gamma_1*Z1 + gamma_2*Z2 - V_q5 > 0)
+    Y_q5  <- D_q5 * Y1_q5 + (1 - D_q5) * Y0_q5
+
+# Oracle (true) propensity score given the chi-squared DGP
+
+    F_V_cdf <- function(v) {
+        arg <- 3 - v * sqrt(6)
+        pmax(0, pmin(1, 1 - pchisq(arg, df = 3)))
+    }
+    ps_true <- F_V_cdf(gamma_0 + gamma_1 * Z1 + gamma_2 * Z2)
+
+    data_q5 <- tibble(Y = Y_q5, D = D_q5, X1, X2, Z1, Z2, ps = ps_true)
+
+    cat("Treatment share: ", round(mean(D_q5), 3), "\n",
+        "ps range:        [", round(min(ps_true), 3), ", ",
+                               round(max(ps_true), 3), "]\n", sep = "")
+```
+
+## Re-running the three estimators
+
+```{r q5-estimators}
+# ---- Parametric (HUV Section 5.1) ----
+# Uses the inverse-Mills formulas based on the normality assumption;
+# these are misspecified under the chi-squared DGP.
+
+    data_q5 <- data_q5 |> mutate(
+        kappa  = -dnorm(qnorm(ps)) / ps,
+        lambda =  dnorm(qnorm(ps)) / (1 - ps)
+    )
+
+    fit_D1_q5 <- lm(Y ~ X1 + X2 + kappa,  data = filter(data_q5, D == 1))
+    fit_D0_q5 <- lm(Y ~ X1 + X2 + lambda, data = filter(data_q5, D == 0))
+
+    a1phi_q5_p <- unname(coef(fit_D1_q5)["(Intercept)"])
+    beta_1_q5p <- unname(coef(fit_D1_q5)[c("X1", "X2")])
+    rho_1_q5p  <- unname(coef(fit_D1_q5)["kappa"])
+    a0_q5_p    <- unname(coef(fit_D0_q5)["(Intercept)"])
+    beta_0_q5p <- unname(coef(fit_D0_q5)[c("X1", "X2")])
+    rho_0_q5p  <- unname(coef(fit_D0_q5)["lambda"])
+
+# -- Polynomial (HUV Section 5.2), degree 4 ----
+
+    fit_poly4_q5 <- fit_poly(4, data_q5)
+
+# ---- Semiparametric (HUV Section 7) ----
+# Step 2: residualise with the degree-4 polynomial coefficients
+# Step 3: local quadratic, Gaussian kernel, h = 0.20
+
+    cc_q5     <- coef(fit_poly4_q5)
+    a0_s_q5   <- unname(cc_q5["(Intercept)"])
+    b0_s_q5   <- unname(cc_q5[c("X1", "X2")])
+    b1m0_s_q5 <- unname(c(cc_q5["I(X1 * ps)"], cc_q5["I(X2 * ps)"]))
+
+    data_q5 <- data_q5 |> mutate(
+        Y_tilde = Y - a0_s_q5 - X1 * b0_s_q5[1] - X2 * b0_s_q5[2] -
+                  (X1 * b1m0_s_q5[1] + X2 * b1m0_s_q5[2]) * ps
+    )
+
+# Common support (with oracle ps it is essentially all of (0, 1))
+
+    p_lo_q5 <- max(min(data_q5$ps[data_q5$D == 1]),
+                   min(data_q5$ps[data_q5$D == 0]))
+    p_hi_q5 <- min(max(data_q5$ps[data_q5$D == 1]),
+                   max(data_q5$ps[data_q5$D == 0]))
+    u_grid_q5 <- seq(p_lo_q5, p_hi_q5, length.out = 200)
+    xbar_q5   <- c(mean(data_q5$X1), mean(data_q5$X2))
+
+# True MTE under the chi-squared DGP
+# MTE(x, u_D) = x'(beta_1 - beta_0) + (rho_1 - rho_0) * F_V^{-1}(u_D)
+# with F_V^{-1}(u) = -(qchisq(1-u, 3) - 3)/sqrt(6)
+
+    rho_1_true_q5 <- sigma_1_q5 * sigma_V_q5 / abs(sigma_V_q5)
+    rho_0_true_q5 <- sigma_0_q5 * sigma_V_q5 / abs(sigma_V_q5)
+    F_V_inv_q5    <- function(u) -(qchisq(1 - u, df = 3) - 3) / sqrt(6)
+
+    mte_truth_q5 <- (alpha_1 + phi - alpha_0) +
+                    sum(xbar_q5 * (beta_1 - beta_0)) +
+                    (rho_1_true_q5 - rho_0_true_q5) * F_V_inv_q5(u_grid_q5)
+
+# Estimator curves on the same grid
+
+    mte_parametric_q5 <- (a1phi_q5_p - a0_q5_p) +
+                         sum(xbar_q5 * (beta_1_q5p - beta_0_q5p)) +
+                         (rho_1_q5p - rho_0_q5p) * qnorm(u_grid_q5)
+
+    mte_polynomial_q5 <- mte_poly(fit_poly4_q5, u_grid_q5, xbar_q5)
+
+    deriv_est_q5 <- sapply(u_grid_q5, local_deriv,
+                           x = data_q5$ps, y = data_q5$Y_tilde, h = h_q4)
+    mte_semipar_q5 <- sum(xbar_q5 * b1m0_s_q5) + deriv_est_q5
+```
+
+```{r q5-summary-table}
+pull_mte <- function(v, u) v[which.min(abs(u_grid_q5 - u))]
+
+q5_tab <- tibble(
+    `u_D`        = c(0.10, 0.25, 0.50, 0.75, 0.90, NA),
+    Description  = c(rep("MTE", 5), "ATE (mean over grid)"),
+    Actual       = c(sapply(c(0.10, 0.25, 0.50, 0.75, 0.90),
+                            function(u) pull_mte(mte_truth_q5, u)),
+                     mean(mte_truth_q5)),
+    Parametric   = c(sapply(c(0.10, 0.25, 0.50, 0.75, 0.90),
+                            function(u) pull_mte(mte_parametric_q5, u)),
+                     mean(mte_parametric_q5)),
+    Polynomial   = c(sapply(c(0.10, 0.25, 0.50, 0.75, 0.90),
+                            function(u) pull_mte(mte_polynomial_q5, u)),
+                     mean(mte_polynomial_q5)),
+    Semiparam    = c(sapply(c(0.10, 0.25, 0.50, 0.75, 0.90),
+                            function(u) pull_mte(mte_semipar_q5, u)),
+                     mean(mte_semipar_q5, na.rm = TRUE))
+)
+
+kable(q5_tab, digits = 4,
+      caption = "Q5 MTE and ATE comparison under the chi-squared DGP")
+```
+
+## Comparison plot
+
+```{r q5-bootstrap}
+# Bootstrap CIs for all three estimators on the chi-squared DGP. Resample
+# rows of data_q5; recompute the oracle propensity score from the
+# resampled (Z1, Z2); rebuild kappa, lambda, polynomial fit, and the
+# residualised semiparametric estimator on each resample.
+
+    set.seed(34837)
+    K <- length(u_grid_q5)
+    mte_boot_param_q5 <- matrix(NA_real_, nrow = B, ncol = K)
+    mte_boot_poly_q5  <- matrix(NA_real_, nrow = B, ncol = K)
+    mte_boot_semi_q5  <- matrix(NA_real_, nrow = B, ncol = K)
+
+    for (b in seq_len(B)) {
+        rs <- sample(nrow(data_q5), replace = TRUE)
+        db <- data_q5[rs, ]
+
+        # Oracle propensity score on the resampled (Z1, Z2)
+        db$ps <- F_V_cdf(gamma_0 + gamma_1 * db$Z1 + gamma_2 * db$Z2)
+
+        # ---- Parametric ----
+        db$kappa  <- -dnorm(qnorm(db$ps)) / db$ps
+        db$lambda <-  dnorm(qnorm(db$ps)) / (1 - db$ps)
+        f1 <- lm(Y ~ X1 + X2 + kappa,  data = db, subset = D == 1)
+        f0 <- lm(Y ~ X1 + X2 + lambda, data = db, subset = D == 0)
+
+        a1phi_b <- coef(f1)["(Intercept)"]
+        b1_b    <- coef(f1)[c("X1", "X2")]
+        r1_b    <- coef(f1)["kappa"]
+        a0_b    <- coef(f0)["(Intercept)"]
+        b0_b    <- coef(f0)[c("X1", "X2")]
+        r0_b    <- coef(f0)["lambda"]
+
+        mte_boot_param_q5[b, ] <- (a1phi_b - a0_b) +
+                                  sum(xbar_q5 * (b1_b - b0_b)) +
+                                  (r1_b - r0_b) * qnorm(u_grid_q5)
+
+        # ---- Polynomial degree 4 ----
+        fit_b <- fit_poly(4, db)
+        mte_boot_poly_q5[b, ] <- mte_poly(fit_b, u_grid_q5, xbar_q5)
+
+        # ---- Semiparametric ----
+        cc_b   <- coef(fit_b)
+        a0_sb  <- unname(cc_b["(Intercept)"])
+        b0_sb  <- unname(cc_b[c("X1", "X2")])
+        b1m0_sb <- unname(c(cc_b["I(X1 * ps)"], cc_b["I(X2 * ps)"]))
+        db$Y_tilde <- db$Y - a0_sb - db$X1 * b0_sb[1] - db$X2 * b0_sb[2] -
+                      (db$X1 * b1m0_sb[1] + db$X2 * b1m0_sb[2]) * db$ps
+        deriv_b <- sapply(u_grid_q5, local_deriv,
+                          x = db$ps, y = db$Y_tilde, h = h_q4)
+        mte_boot_semi_q5[b, ] <- sum(xbar_q5 * b1m0_sb) + deriv_b
+    }
+
+    qci <- function(M) list(
+        lo = apply(M, 2, quantile, 0.025, na.rm = TRUE),
+        hi = apply(M, 2, quantile, 0.975, na.rm = TRUE)
+    )
+    ci_param_q5 <- qci(mte_boot_param_q5)
+    ci_poly_q5  <- qci(mte_boot_poly_q5)
+    ci_semi_q5  <- qci(mte_boot_semi_q5)
+```
+
+```{r q5-plot, fig.width=7, fig.height=4.7, fig.align='center'}
+mte_df_q5 <- bind_rows(
+    tibble(u = u_grid_q5, MTE = mte_truth_q5,     Curve = "Actual (chi-sq DGP)"),
+    tibble(u = u_grid_q5, MTE = mte_parametric_q5, Curve = "Parametric (Q2)"),
+    tibble(u = u_grid_q5, MTE = mte_polynomial_q5, Curve = "Polynomial deg 4 (Q3)"),
+    tibble(u = u_grid_q5, MTE = mte_semipar_q5,   Curve = "Semiparametric (Q4)")
+)
+
+ribbons_q5 <- bind_rows(
+    tibble(u = u_grid_q5, lo = ci_param_q5$lo, hi = ci_param_q5$hi, Curve = "Parametric (Q2)"),
+    tibble(u = u_grid_q5, lo = ci_poly_q5$lo,  hi = ci_poly_q5$hi,  Curve = "Polynomial deg 4 (Q3)"),
+    tibble(u = u_grid_q5, lo = ci_semi_q5$lo,  hi = ci_semi_q5$hi,  Curve = "Semiparametric (Q4)")
+)
+
+ggplot() +
+    geom_ribbon(data = ribbons_q5,
+                aes(x = u, ymin = lo, ymax = hi, fill = Curve), alpha = 0.18) +
+    geom_line(data = mte_df_q5,
+              aes(x = u, y = MTE, colour = Curve, linetype = Curve),
+              linewidth = 0.9) +
+    scale_colour_manual(values = c("Actual (chi-sq DGP)"    = "black",
+                                   "Parametric (Q2)"        = "red",
+                                   "Polynomial deg 4 (Q3)"  = "green",
+                                   "Semiparametric (Q4)"    = "blue")) +
+    scale_fill_manual(values = c("Parametric (Q2)"          = "red",
+                                 "Polynomial deg 4 (Q3)"    = "green",
+                                 "Semiparametric (Q4)"      = "blue"),
+                      guide = "none") +
+    scale_linetype_manual(values = c("Actual (chi-sq DGP)"   = "dashed",
+                                     "Parametric (Q2)"       = "solid",
+                                     "Polynomial deg 4 (Q3)" = "solid",
+                                     "Semiparametric (Q4)"   = "solid")) +
+    labs(x = expression(u[D]),
+         y = expression(MTE(bar(X), u[D])),
+         title = "Q5 MTE estimators under a chi-squared (non-normal) DGP",
+         caption = sprintf("Oracle propensity score; amplified selection. Shaded: 95%% bootstrap CI (B = %d).", B)) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "bottom", legend.title = element_blank())
+```
+
+## What is robust, what is not
+
+The plot makes two messages visible. **First, the parametric curve is systematically biased.** The Heckman estimator forces the MTE to be linear in $\Phi^{-1}(u_D)$, but the true MTE under the chi-squared DGP is linear in $F_V^{-1}(u_D)$, a different function. Because the standardised $\chi_3^2$ has a heavier left tail and a lighter right tail than the standard normal of the *same* variance, the parametric curve *under-states* the MTE at low $u_D$ (the true curve rises more sharply into the high-gain left tail) and *over-states* (in magnitude) the negative MTE at high $u_D$ (the true curve bottoms out less steeply). The bias is largest at $u_D \in \{0.10, 0.90\}$ and smallest near $u_D = 0.5$, where $\Phi^{-1}$ and $F_V^{-1}$ agree by construction. **Second, the polynomial and semiparametric estimators are visually indistinguishable from the truth across the common support.** They do not impose any functional form on $K(p)$ beyond smoothness, so they bend with the data.
+
+Translated into what features of the MTE are robust:
+
+-   *Aggregate parameters* (ATE in the table) are nearly robust. The parametric estimator's tail biases roughly cancel when averaged over $u_D$, and ATE is off by only a few percent (about $-14\%$ in this realisation). Polynomial and semiparametric ATE are within a tenth of a percent of the truth.
+
+-   *Sign and approximate magnitude* of selection-on-gains are recovered by all three estimators: each shows a downward-sloping MTE over the common support.
+
+-   *Shape in the interior* of the distribution is recovered by all three methods to within a few hundredths in this sample.
+
+And what is **sensitive**:
+
+-   *The shape of the MTE in the tails* is where the parametric estimator breaks down. Anything that relies on tail values of the MTE will be biased by the parametric method whenever the joint-normality assumption is wrong. That is tail-weighted policy-relevant treatment effects, marginal policy-relevant effects at low-propensity margins, or the slope $\mathrm{d}\mathrm{MTE}/\mathrm{d}u_D$
+
+-   *Individual-level effects* at the extremes of the resistance distribution are therefore also sensitive. A policy that draws compliers from the low-propensity left tail would have its causal effect overstated by the parametric estimator and well-estimated by the polynomial or semiparametric estimators.
+
+The practical lesson is the same one HUV emphasise in their Figure 4: the parametric estimator is efficient when the model is right but is not robust when the distribution of $(U_0, U_1, V)$ departs from normality, while the polynomial and local-polynomial estimators trade a small amount of efficiency for meaningful robustness. Whenever the tails of the MTE matter for the policy question, the semiparametric route is the safer default.
 

@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026) (preloaded format=xelatex 2026.4.24)  24 APR 2026 22:48
+This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026) (preloaded format=xelatex 2026.4.24)  26 APR 2026 11:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -964,21 +964,44 @@ Overfull \vbox (1.27843pt too high) detected at line 816
  []
 
 [14] [15]
+Underfull \vbox (badness 10000) detected at line 890
+ []
+
+[16]
 File: AERM_HT_part3_files/figure-latex/q3-plot-1.pdf Graphic file (type pdf)
 <use AERM_HT_part3_files/figure-latex/q3-plot-1.pdf>
-[16] [17] (./AERM_HT_part3.aux)
+[17] [18]
+Underfull \vbox (badness 10000) detected at line 1064
+ []
+
+[19] [20]
+File: AERM_HT_part3_files/figure-latex/q4-plot-1.pdf Graphic file (type pdf)
+<use AERM_HT_part3_files/figure-latex/q4-plot-1.pdf>
+[21] [22] [23] [24]
+Underfull \vbox (badness 10000) detected at line 1336
+ []
+
+[25] [26]
+File: AERM_HT_part3_files/figure-latex/q5-plot-1.pdf Graphic file (type pdf)
+<use AERM_HT_part3_files/figure-latex/q5-plot-1.pdf>
+
+Overfull \hbox (36.13374pt too wide) in paragraph at lines 1419--1419
+ [] 
+ []
+
+[27] [28] (./AERM_HT_part3.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-03-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 19561 strings out of 469972
- 360201 string characters out of 5473158
- 953441 words of memory out of 5000000
- 48057 multiletter control sequences out of 15000+600000
+ 19605 strings out of 469972
+ 361697 string characters out of 5473158
+ 957103 words of memory out of 5000000
+ 48099 multiletter control sequences out of 15000+600000
  634186 words of font info for 95 fonts, out of 8000000 for 9000
  36 hyphenation exceptions out of 8191
- 90i,7n,114p,1010b,428s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,7n,114p,1010b,423s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on AERM_HT_part3.pdf (17 pages).
+Output written on AERM_HT_part3.pdf (28 pages).
